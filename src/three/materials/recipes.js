@@ -439,3 +439,4 @@ export const ham = {
 // Each work package keeps its recipes in recipes/<package>.js and adds one
 // re-export line here. Keys must be unique across all packages.
 export * from './recipes/pizza-extras.js';
+export * from './recipes/store-exterior.js';
