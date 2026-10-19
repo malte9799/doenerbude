@@ -1,9 +1,10 @@
 import core from './core.js';
+import pizzaExtras from './pizza-extras.js';
 
 // German strings, split per work package. Each package adds one file here
 // and one entry to `parts`; parts are deep-merged, so a package may extend
 // shared namespaces such as `products` or `ingredients`.
-const parts = [core];
+const parts = [core, pizzaExtras];
 
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
 const merge = (a, b) => {
