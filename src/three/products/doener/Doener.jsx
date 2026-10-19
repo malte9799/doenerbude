@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { materials } from '../../materials/index.js';
-import { blobShape, deform, merge, planarUV, ribbon, rng, slab, splitByNormal } from '../../geo.js';
+import { blobShape, deform, jitter, merge, planarUV, ribbon, rng, slab, splitByNormal } from '../../geo.js';
 import Layer from '../Layer.jsx';
 
 // Döner im Fladenbrot, opened towards the viewer. Units: 1 = 10 cm.
@@ -36,13 +36,15 @@ const memo = (key, make) => (cache[key] ??= make());
 // group 1) and a domed, seeded crust (group 0). Origin: centre of the cut face.
 const breadHalf = () =>
   memo('bread', () => {
-    const shape = blobShape({ w: L, h: D, p: 2.6, wobble: 0.02, seed: 4 });
+    const shape = blobShape({ w: L, h: D, p: 2.5, wobble: 0.06, seed: 4 });
     let g = slab(shape, { thickness: 0.36, bevel: 0.16, bevelSegments: 8, tessellate: 0.09, uvScale: 0.42 });
     g = deform(g, v => {
-      const inside = Math.max(0, 1 - (v.x / (L / 2)) ** 2 - (v.z / (D / 2)) ** 2);
-      if (v.y < 0) v.y -= 0.14 * inside; // belly
-      else v.y -= 0.03 * inside; // slight pocket in the cut face
-      v.y -= 0.18;
+      // Off-centre, uneven belly and a slightly wavy cut: hand-made bread.
+      const inside = Math.max(0, 1 - ((v.x + 0.15) / (L / 2)) ** 2 - ((v.z - 0.05) / (D / 2)) ** 2);
+      const lumps = 0.025 * Math.sin(v.x * 2.3 + 0.7) + 0.018 * Math.sin(v.z * 4.1 + v.x * 1.3);
+      if (v.y < 0) v.y -= (0.14 + lumps) * inside; // belly
+      else v.y += -0.03 * inside + 0.015 * Math.sin(v.x * 3.1 + v.z * 2.2); // wavy cut face
+      v.y += 0.04 * Math.sin(v.x * 1.1 + 0.4) * 0.5 - 0.18; // gentle overall sag
     });
     return splitByNormal(g, new THREE.Vector3(0, 1, 0), 0.75);
   });
@@ -119,10 +121,14 @@ const drizzle = () =>
       { z: 0.1, amp: 0.14, freq: 3.4, ph: 0 },
       { z: -0.14, amp: 0.1, freq: 4.2, ph: 1.7 },
     ].map(({ z, amp, freq, ph }) => {
+      const r = rng(Math.round(ph * 10) + 5);
       const pts = [];
+      let wobble = 1;
       for (let i = 0; i <= 40; i++) {
         const t = i / 40;
-        pts.push(new THREE.Vector3((t * 2 - 1) * FILL.x * 0.82, 0.02 * Math.sin(t * 13 + ph), z + amp * Math.sin(t * freq * Math.PI + ph)));
+        wobble += (r() - 0.5) * 0.25;
+        wobble = Math.min(1.4, Math.max(0.5, wobble));
+        pts.push(new THREE.Vector3((t * 2 - 1) * FILL.x * 0.8 + (r() - 0.5) * 0.03, 0.03 * Math.sin(t * 9 + ph) + r() * 0.015, z + amp * wobble * Math.sin(t * freq * Math.PI + ph)));
       }
       return ribbon(pts, { radius: 0.045, flat: 0.6, segments: 220, radial: 12 });
     });
@@ -143,25 +149,51 @@ const flake = () =>
 // ─────────────────────────────── layouts ─────────────────────────────────
 // Fixed, tidy arrangements (no randomness at runtime).
 
-const meatLayout = [
-  ...[-0.72, -0.24, 0.24, 0.72].map((x, i) => ({ seed: 1 + i, p: [x, 0.05, i % 2 ? 0.0 : 0.2], r: [i % 2 ? 0.15 : 0.38, (i - 1.5) * 0.25, (i % 2 ? 1 : -1) * 0.12] })),
-  ...[-0.48, 0, 0.48].map((x, i) => ({ seed: 5 + i, p: [x, 0.15, 0.02], r: [0.12, (1 - i) * 0.35, (i - 1) * 0.15] })),
-];
+const meatLayout = jitter(
+  [
+    ...[-0.72, -0.24, 0.24, 0.72].map((x, i) => ({ seed: 1 + i, p: [x, 0.05, i % 2 ? 0.0 : 0.2], r: [i % 2 ? 0.15 : 0.38, (i - 1.5) * 0.25, (i % 2 ? 1 : -1) * 0.12] })),
+    ...[-0.48, 0, 0.48].map((x, i) => ({ seed: 5 + i, p: [x, 0.15, 0.02], r: [0.12, (1 - i) * 0.35, (i - 1) * 0.15] })),
+  ],
+  12,
+  { pos: 0.08, y: 0.03, rot: 0.35, tilt: 0.08, scale: 0.12 },
+);
 
-const lettuceLayout = [-0.7, -0.35, 0, 0.35, 0.7].map((x, i) => ({ seed: 30 + i, p: [x, 0.04, i % 2 ? -0.14 : 0.14], r: [i % 2 ? 0.1 : 0.3, (i - 2) * 0.3, 0] }));
+const lettuceLayout = jitter(
+  [-0.7, -0.35, 0, 0.35, 0.7].map((x, i) => ({ seed: 30 + i, p: [x, 0.04, i % 2 ? -0.14 : 0.14], r: [i % 2 ? 0.1 : 0.3, (i - 2) * 0.3, 0] })),
+  22,
+  { pos: 0.08, y: 0.02, rot: 0.5, tilt: 0.15, scale: 0.15 },
+);
 
 // Tomatoes and cucumbers lean out of the front, tilted towards the viewer.
-const tomatoLayout = [-0.6, 0, 0.6].map((x, i) => ({ p: [x, 0.05, FILL.z + 0.02], r: [0.65, (i - 1) * 0.1, 0] }));
-const cucumberLayout = [-0.3, 0.3].map((x, i) => ({ p: [x, 0.08, FILL.z - 0.12], r: [0.75, 0, (i ? 1 : -1) * 0.12] }));
+const tomatoLayout = jitter(
+  [-0.62, -0.02, 0.6].map((x, i) => ({ p: [x, 0.05, FILL.z + 0.02], r: [0.65, (i - 1) * 0.1, 0] })),
+  33,
+  { pos: 0.05, y: 0.03, rot: 0.3, tilt: 0.16, scale: 0.12 },
+);
+const cucumberLayout = jitter(
+  [-0.3, 0.32].map((x, i) => ({ p: [x, 0.08, FILL.z - 0.12], r: [0.75, 0, (i ? 1 : -1) * 0.12] })),
+  34,
+  { pos: 0.05, y: 0.02, rot: 0.4, tilt: 0.15, scale: 0.1 },
+);
 
-const onionLayout = [-0.6, -0.2, 0.2, 0.6].map((x, i) => ({ seed: 50 + i, p: [x, 0.02, i % 2 ? 0.12 : -0.12], r: [0, i * 1.7, 0] }));
+const onionLayout = jitter(
+  [-0.6, -0.2, 0.2, 0.6].map((x, i) => ({ seed: 50 + i, p: [x, 0.02, i % 2 ? 0.12 : -0.12], r: [0, i * 1.7, 0] })),
+  44,
+  { pos: 0.1, y: 0.02, rot: 1, tilt: 0.25, scale: 0.15 },
+);
 
-const fetaLayout = Array.from({ length: 6 }, (_, i) => ({ p: [-0.55 + (i % 3) * 0.55, 0.08, -0.14 + Math.floor(i / 3) * 0.28], r: [0.15 * ((i % 2) - 0.5), i * 0.6, 0.1] }));
+const fetaLayout = jitter(
+  Array.from({ length: 6 }, (_, i) => ({ p: [-0.55 + (i % 3) * 0.55, 0.08, -0.14 + Math.floor(i / 3) * 0.28] })),
+  66,
+  { pos: 0.12, y: 0.03, rot: Math.PI, tilt: 0.35, scale: 0.2 },
+);
 
 // ─────────────────────────────── component ───────────────────────────────
 
 function Pieces({ layout, geometry, material }) {
-  return layout.map((it, i) => <mesh key={i} geometry={geometry(it)} material={material} position={it.p} rotation={it.r} castShadow receiveShadow />);
+  return layout.map((it, i) => (
+    <mesh key={i} geometry={geometry(it)} material={material} position={it.p} rotation={it.r} scale={it.s ?? 1} castShadow receiveShadow />
+  ));
 }
 
 function ChiliFlakes() {
@@ -211,8 +243,8 @@ export default function Doener({ active }) {
       <mesh geometry={bread} material={breadMats} position={[0, base, 0]} castShadow receiveShadow />
 
       {/* lid, hinged at the back edge */}
-      <group ref={lid} position={[0, base, -D / 2 + 0.08]}>
-        <mesh geometry={bread} material={breadMats} rotation={[Math.PI, 0, 0]} position={[0, 0.01, D / 2 - 0.08]} castShadow receiveShadow />
+      <group ref={lid} position={[0.03, base, -D / 2 + 0.08]}>
+        <mesh geometry={bread} material={breadMats} rotation={[Math.PI, 0.05, 0.035]} position={[0, 0.01, D / 2 - 0.08]} castShadow receiveShadow />
       </group>
 
       <Layer active={on('meatVeal')} y={ys.meatVeal}>

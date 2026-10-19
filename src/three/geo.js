@@ -128,3 +128,18 @@ export function ribbon(points, { radius = 0.02, flat = 1, segments = 32, radial 
 
 export const merge = geos => mergeGeometries(geos, false);
 export { rng };
+
+// Natural variation for hand-placed slots: deterministic (seeded) offsets in
+// position, spin, tilt and size, plus a geometry variant index `v` (0..3).
+// Keeps layouts readable while nothing sits on a perfect grid or ring.
+export function jitter(items, seed, { pos = 0.05, y = 0, rot = 0.3, tilt = 0.06, scale = 0.1 } = {}) {
+  const r = rng(seed);
+  const d = amount => (r() - 0.5) * 2 * amount;
+  return items.map(it => ({
+    ...it,
+    p: [it.p[0] + d(pos), it.p[1] + d(y), it.p[2] + d(pos)],
+    r: [(it.r?.[0] ?? 0) + d(tilt), (it.r?.[1] ?? 0) + d(rot), (it.r?.[2] ?? 0) + d(tilt)],
+    s: (it.s ?? 1) * (1 + d(scale)),
+    v: Math.floor(r() * 4),
+  }));
+}

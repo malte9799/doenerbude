@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { materials } from '../../materials/index.js';
-import { blobShape, deform, planarUV, ribbon, rng, slab } from '../../geo.js';
+import { blobShape, deform, jitter, planarUV, ribbon, rng, slab } from '../../geo.js';
 import Layer from '../Layer.jsx';
 
 // Pizza, Ø 30 cm (3 units). Base → sauce → cheese → toppings in fixed slots.
@@ -63,10 +63,28 @@ const base = () =>
     for (let i = 0; i <= segs; i++) {
       for (let j = 0; j < pts.length; j++) uv.setY(i * pts.length + j, vs[j]);
     }
+
+    // Hand-made look: a slightly oval base and a lumpy rim that rises and
+    // falls around the pizza (periodic in the angle, so the seam closes).
+    const pos = g.attributes.position;
+    for (let k = 0; k < pos.count; k++) {
+      const x = pos.getX(k);
+      const y = pos.getY(k);
+      const z = pos.getZ(k);
+      const r = Math.hypot(x, z);
+      if (r < 1e-4) continue;
+      const a = Math.atan2(z, x);
+      const rim = THREE.MathUtils.smoothstep(r, 1.05, 1.3);
+      const lump = 0.5 * Math.sin(3 * a + 1) + 0.3 * Math.sin(5 * a + 2.3) + 0.2 * Math.sin(8 * a + 0.7) + 0.12 * Math.sin(13 * a + 4.1);
+      const oval = 1 + 0.015 * Math.cos(2 * a + 0.6);
+      const k2 = (oval * (r + rim * lump * 0.022)) / r;
+      pos.setXYZ(k, x * k2, y * (1 + rim * lump * 0.22), z * k2);
+    }
+    g.computeVertexNormals();
     return g;
   });
 
-const sauce = () => memo('sauce', () => slab(blobShape({ w: 2.38, h: 2.38, wobble: 0.025, seed: 3, points: 96 }), { thickness: 0.05, bevel: 0.022, bevelSegments: 4, uvScale: 0.42 }));
+const sauce = () => memo('sauce', () => slab(blobShape({ w: 2.34, h: 2.38, wobble: 0.05, seed: 3, points: 96 }), { thickness: 0.05, bevel: 0.022, bevelSegments: 4, uvScale: 0.42 }));
 
 // Cheese is a dense grid; its outline, holes and melted relief all come from
 // the cheese texture (alpha cut-out + displacement), so raw and baked match.
@@ -78,11 +96,21 @@ const cheese = () =>
     return planarUV(g, 1 / CHEESE);
   });
 
-// Round slices with optional cupping (slices curl up at the rim in the oven).
-const disc = (key, d, t, cup = 0) =>
-  memo(key, () => {
-    const g = slab(blobShape({ w: d, h: d, wobble: 0.012, seed: d * 100 }), { thickness: t, bevel: t * 0.42, bevelSegments: 5, tessellate: cup ? d / 10 : 0, uvScale: 1 / d });
-    return cup ? deform(g, v => void (v.y += cup * ((v.x * v.x + v.z * v.z) / ((d * d) / 4)))) : g;
+// Round slices, each variant a little out of round, with cupping (slices
+// curl up at the rim in the oven) and a slight lean.
+const disc = (key, d, t, cup = 0, variant = 0) =>
+  memo(`${key}${variant}`, () => {
+    const r = rng(variant * 31 + Math.round(d * 100));
+    const g = slab(blobShape({ w: d * (1 + (r() - 0.5) * 0.08), h: d, wobble: 0.05, seed: variant * 7 + 3 }), {
+      thickness: t,
+      bevel: t * 0.42,
+      bevelSegments: 5,
+      tessellate: d / 10,
+      uvScale: 1 / d,
+    });
+    const c = cup * (0.6 + r() * 0.8);
+    const lean = (r() - 0.5) * 0.08;
+    return deform(g, v => void (v.y += c * ((v.x * v.x + v.z * v.z) / ((d * d) / 4)) + lean * v.x + 0.01 * Math.sin(v.z * 20 + variant)));
   });
 
 const olive = () =>
@@ -148,21 +176,23 @@ const ring = (n, r, offset = 0, extra = {}) =>
     return { p: [Math.cos(a) * r, 0, Math.sin(a) * r], r: [0, -a, 0], ...extra };
   });
 
+// Rings give a readable base layout; jitter makes it look placed by hand.
+const loose = { pos: 0.09, rot: Math.PI, tilt: 0.07, scale: 0.12 };
 const slots = {
-  salami: [...ring(6, 0.78, 0), { p: [0, 0, 0], r: [0, 0.4, 0] }],
-  ham: ring(4, 0.48, Math.PI / 4).map((s, i) => ({ ...s, seed: 1 + i })),
-  tomatoSlices: ring(5, 0.5, Math.PI / 5),
-  mushrooms: ring(6, 1.0, Math.PI / 6).map(s => ({ ...s, r: [0, s.r[1] + Math.PI / 2, 0] })),
-  pepper: ring(6, 0.66, Math.PI / 6).map((s, i) => ({ ...s, seed: 10 + (i % 3) })),
-  olives: ring(6, 1.06, 0),
-  basil: ring(3, 0.24, Math.PI / 2),
+  salami: jitter([...ring(6, 0.8, 0.3), { p: [0.05, 0, -0.04], r: [0, 0.4, 0] }], 1, loose),
+  ham: jitter(ring(4, 0.48, Math.PI / 4), 2, loose).map((s, i) => ({ ...s, seed: 1 + i })),
+  tomatoSlices: jitter(ring(5, 0.5, Math.PI / 5), 3, loose),
+  mushrooms: jitter(ring(6, 1.0, Math.PI / 6).map(s => ({ ...s, r: [0, s.r[1] + Math.PI / 2, 0] })), 4, { ...loose, rot: 0.5, scale: 0.18 }),
+  pepper: jitter(ring(6, 0.66, Math.PI / 6), 5, { ...loose, rot: 0.8 }).map((s, i) => ({ ...s, seed: 10 + (i % 3) })),
+  olives: jitter([...ring(5, 1.06, 0.2), { p: [-0.3, 0, 0.62] }, { p: [0.45, 0, -0.55] }], 6, { ...loose, pos: 0.12, tilt: 0.25, scale: 0.15 }),
+  basil: jitter(ring(3, 0.24, Math.PI / 2), 7, { pos: 0.06, rot: 0.6, tilt: 0.15, scale: 0.15 }),
 };
 
 // ─────────────────────────────── component ───────────────────────────────
 
 function Pieces({ items, geometry, material, y = 0 }) {
   return items.map((it, i) => (
-    <mesh key={i} geometry={geometry(it)} material={material} position={[it.p[0], it.p[1] + y, it.p[2]]} rotation={it.r} castShadow receiveShadow />
+    <mesh key={i} geometry={geometry(it)} material={material} position={[it.p[0], it.p[1] + y, it.p[2]]} rotation={it.r} scale={it.s ?? 1} castShadow receiveShadow />
   ));
 }
 
@@ -197,13 +227,13 @@ export default function Pizza({ active, baked = false }) {
         <mesh geometry={cheese()} material={cheeseMat} receiveShadow />
       </Layer>
       <Layer active={on('salami')} y={ty('salami')}>
-        <Pieces items={slots.salami} geometry={() => disc('salami', 0.62, 0.1, 0.04)} material={materials.salami()} />
+        <Pieces items={slots.salami} geometry={it => disc('salami', 0.62, 0.1, 0.045, it.v)} material={materials.salami()} />
       </Layer>
       <Layer active={on('ham')} y={ty('ham')}>
         <Pieces items={slots.ham} geometry={it => hamPiece(it.seed)} material={materials.ham()} />
       </Layer>
       <Layer active={on('tomatoSlices')} y={ty('tomatoSlices')}>
-        <Pieces items={slots.tomatoSlices} geometry={() => disc('tomato', 0.5, 0.08)} material={materials.tomatoSlice()} />
+        <Pieces items={slots.tomatoSlices} geometry={it => disc('tomato', 0.5, 0.08, 0.015, it.v)} material={materials.tomatoSlice()} />
       </Layer>
       <Layer active={on('mushrooms')} y={ty('mushrooms')}>
         <Pieces items={slots.mushrooms} geometry={mushroom} material={mushroomMats} />

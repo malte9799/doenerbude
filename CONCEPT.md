@@ -66,7 +66,7 @@ Pizzavarianten sind Zutaten-Kombinationen im Baukasten und brauchen keine eigene
 
 ## 5. Baukasten
 
-**Prinzip:** Ein Produkt besteht aus **Schichten in fester Reihenfolge**. Jede Zutat hat eine **feste, ordentliche Anordnung** und ist nicht zufällig verteilt. Hinzufügen bedeutet, die Zutat fällt animiert an ihren Platz. Entfernen bedeutet, sie hebt ab und ist weg, nicht bloß versteckt.
+**Prinzip:** Ein Produkt besteht aus **Schichten in fester Reihenfolge**. Jede Zutat hat eine **feste Grundanordnung**, die mit fester Zufallsvariation (Lage, Drehung, Neigung, Größe) wie von Hand gelegt wirkt. Nichts liegt auf einem perfekten Raster oder Ring, und es sieht bei jedem Laden gleich aus. Hinzufügen bedeutet, die Zutat fällt animiert an ihren Platz. Entfernen bedeutet, sie hebt ab und ist weg, nicht bloß versteckt.
 
 **Pizza:** Teigling → Sauce (Tomate / Weiß / BBQ) → Käse → Beläge (Salami, Schinken, Hähnchen, Tomate, Paprika, Zwiebel, Pilze, Oliven, Mais, Thunfisch, Jalapeños) → **Backen** (Käse schmilzt, Rand bräunt, Dampf) → Rucola nach dem Backen.
 
