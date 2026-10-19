@@ -13,44 +13,52 @@ const once = (key, make) => {
   return cache.get(key);
 };
 
-// Soft "Fluent" base: textured PBR + a light sheen that rounds silhouettes off.
-function textured(key, { normalScale = 1, ...opts } = {}) {
-  const t = tex(key);
-  return new THREE.MeshPhysicalMaterial({
-    map: t.map,
-    normalMap: t.normalMap,
-    normalScale: new THREE.Vector2(normalScale, normalScale),
-    roughnessMap: t.roughnessMap,
-    roughness: 1,
-    sheen: 0.25,
-    sheenRoughness: 0.6,
-    sheenColor: new THREE.Color('#fff4e0'),
-    ...opts,
-  });
+// ─────────────────────────── shader patches ──────────────────────────────
+// Several patches can stack on one material (fluent + triplanar + bake).
+
+function addPatch(material, key, fn) {
+  const patches = (material.userData.patches ??= []);
+  patches.push({ key, fn });
+  material.onBeforeCompile = shader => patches.forEach(p => p.fn(shader));
+  material.customProgramCacheKey = () => patches.map(p => p.key).join('|');
+  return material;
 }
 
-// Crossfades the colour map from `raw` to `baked` via material.userData.bake.value (0..1).
-function bakeBlend(material, bakedKey) {
-  const uniforms = { uBake: { value: 0 }, uBakedMap: { value: tex(bakedKey).map } };
-  material.userData.bake = uniforms.uBake;
-  material.onBeforeCompile = shader => {
+// The Fluent-emoji look: a soft top-to-bottom gradient (lit, warm top;
+// slightly deeper underside) and a coloured rim glow that makes food read
+// as plump and a little translucent.
+const TOP = new THREE.Color(1.07, 1.06, 1.04);
+const BOTTOM = new THREE.Color(0.84, 0.78, 0.76);
+function fluent(material, { rim = '#ffffff', rimStrength = 0.3, rimPower = 3 } = {}) {
+  const uniforms = {
+    uRim: { value: new THREE.Color(rim).multiplyScalar(rimStrength * 0.55) },
+    uRimPow: { value: rimPower },
+    uTop: { value: TOP },
+    uBottom: { value: BOTTOM },
+  };
+  return addPatch(material, 'fluent', shader => {
     Object.assign(shader.uniforms, uniforms);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uBake;\nuniform sampler2D uBakedMap;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 uRim;\nuniform float uRimPow;\nuniform vec3 uTop;\nuniform vec3 uBottom;')
       .replace(
-        '#include <map_fragment>',
-        '#include <map_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, diffuse * texture2D(uBakedMap, vMapUv).rgb, uBake);',
+        '#include <opaque_fragment>',
+        `#include <opaque_fragment>
+{
+  vec3 V = normalize(vViewPosition);
+  float facing = clamp(dot(normal, V), 0.0, 1.0);
+  float up = dot(normal, normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz)) * 0.5 + 0.5;
+  gl_FragColor.rgb *= mix(uBottom, uTop, smoothstep(0.0, 1.0, up));
+  gl_FragColor.rgb += uRim * pow(1.0 - facing, uRimPow);
+}`,
       );
-  };
-  material.customProgramCacheKey = () => 'bakeBlend';
-  return material;
+  });
 }
 
 // Triplanar projection for organic shapes without clean UVs (bread): colour,
 // roughness and normals are projected along the three object axes and
 // blended by the surface normal, so nothing smears on curved sides.
 function triplanar(material, scale) {
-  material.onBeforeCompile = shader => {
+  return addPatch(material, 'triplanar', shader => {
     shader.uniforms.uTriScale = { value: scale };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nuniform float uTriScale;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;')
@@ -85,54 +93,85 @@ vec4 triSample(sampler2D t) {
   normal = normalize(normalMatrix * normalize(nx * w.x + ny * w.y + nz * w.z));
 }`,
       );
-  };
-  material.customProgramCacheKey = () => 'triplanar';
-  return material;
+  });
 }
 
-const wet = { clearcoat: 0.7, clearcoatRoughness: 0.18 };
+// Crossfades the colour map from `raw` to `baked` via material.userData.bake.value (0..1).
+function bakeBlend(material, bakedKey) {
+  const uniforms = { uBake: { value: 0 }, uBakedMap: { value: tex(bakedKey).map } };
+  material.userData.bake = uniforms.uBake;
+  return addPatch(material, 'bake', shader => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uBake;\nuniform sampler2D uBakedMap;')
+      .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, diffuse * texture2D(uBakedMap, vMapUv).rgb, uBake);');
+  });
+}
+
+// ───────────────────────────── factories ─────────────────────────────────
+
+// Textured PBR + soft sheen + the fluent patch.
+function textured(key, { normalScale = 1, rim, rimStrength, ...opts } = {}) {
+  const t = tex(key);
+  const material = new THREE.MeshPhysicalMaterial({
+    map: t.map,
+    normalMap: t.normalMap,
+    normalScale: new THREE.Vector2(normalScale, normalScale),
+    roughnessMap: t.roughnessMap,
+    roughness: 1,
+    sheen: 0.35,
+    sheenRoughness: 0.5,
+    sheenColor: new THREE.Color(rim ?? '#fff4e0'),
+    ...opts,
+  });
+  return fluent(material, { rim, rimStrength });
+}
+
+const plain = (color, rim, opts = {}) =>
+  fluent(new THREE.MeshPhysicalMaterial({ color, roughness: 0.45, sheen: 0.4, sheenColor: new THREE.Color(rim), ...opts }), { rim });
+
+const wet = { clearcoat: 0.8, clearcoatRoughness: 0.12 };
 
 export const materials = {
   // Bread
-  breadCrust: () => once('breadCrust', () => triplanar(textured('breadCrust', { normalScale: 1, clearcoat: 0.25, clearcoatRoughness: 0.45, sheenColor: new THREE.Color('#ffd9a0') }), 0.42)),
-  breadCrumb: () => once('breadCrumb', () => triplanar(textured('breadCrumb', { normalScale: 1, sheen: 0.6, sheenRoughness: 0.8 }), 0.42)),
+  breadCrust: () => once('breadCrust', () => triplanar(textured('breadCrust', { rim: '#ffd59a', clearcoat: 0.3, clearcoatRoughness: 0.35 }), 0.42)),
+  breadCrumb: () => once('breadCrumb', () => triplanar(textured('breadCrumb', { rim: '#fff3d8', sheen: 0.6 }), 0.42)),
 
   // Döner fillings
-  doenerMeat: () => once('doenerMeat', () => textured('doenerMeat', { normalScale: 1.2, clearcoat: 0.35, clearcoatRoughness: 0.35 })),
-  lettuce: () => once('lettuce', () => textured('lettuce', { side: THREE.DoubleSide, clearcoat: 0.3, clearcoatRoughness: 0.3, sheen: 0.5, sheenColor: new THREE.Color('#f2ffd0') })),
-  tomatoSlice: () => once('tomatoSlice', () => textured('tomatoSlice', { ...wet, clearcoat: 0.9 })),
-  cucumberSlice: () => once('cucumberSlice', () => textured('cucumberSlice', wet)),
-  onion: () => once('onion', () => textured('onion', { clearcoat: 0.6, clearcoatRoughness: 0.2 })),
-  redCabbage: () => once('redCabbage', () => textured('redCabbage', { clearcoat: 0.4, clearcoatRoughness: 0.3 })),
-  whiteCabbage: () => once('whiteCabbage', () => textured('whiteCabbage', { clearcoat: 0.4, clearcoatRoughness: 0.3 })),
-  feta: () => once('feta', () => textured('feta', { normalScale: 1.4, sheen: 0.5 })),
-  garlicSauce: () => once('garlicSauce', () => textured('garlicSauce', { clearcoat: 1, clearcoatRoughness: 0.1, sheen: 0.6, sheenColor: new THREE.Color('#ffffff') })),
-  chili: () => once('chili', () => new THREE.MeshPhysicalMaterial({ color: '#c22a17', roughness: 0.5, sheen: 0.3, sheenColor: new THREE.Color('#ff9a70') })),
+  doenerMeat: () => once('doenerMeat', () => textured('doenerMeat', { rim: '#ffb57a', rimStrength: 0.4, clearcoat: 0.3, clearcoatRoughness: 0.3 })),
+  lettuce: () => once('lettuce', () => textured('lettuce', { rim: '#eaff9c', rimStrength: 0.5, side: THREE.DoubleSide, ...wet, clearcoat: 0.4 })),
+  tomatoSlice: () => once('tomatoSlice', () => textured('tomatoSlice', { rim: '#ff6e50', rimStrength: 0.3, sheen: 0, clearcoat: 0.15, clearcoatRoughness: 0.5 })),
+  cucumberSlice: () => once('cucumberSlice', () => textured('cucumberSlice', { rim: '#e8ffb4', rimStrength: 0.45, ...wet })),
+  onion: () => once('onion', () => textured('onion', { rim: '#f8cdef', ...wet })),
+  redCabbage: () => once('redCabbage', () => textured('redCabbage', { rim: '#e9a0da', rimStrength: 0.45, ...wet, clearcoat: 0.5 })),
+  whiteCabbage: () => once('whiteCabbage', () => textured('whiteCabbage', { rim: '#faffe0', rimStrength: 0.4, ...wet, clearcoat: 0.5 })),
+  feta: () => once('feta', () => textured('feta', { rim: '#ffffff', rimStrength: 0.3 })),
+  garlicSauce: () => once('garlicSauce', () => textured('garlicSauce', { rim: '#ffffff', rimStrength: 0.3, clearcoat: 1, clearcoatRoughness: 0.08 })),
+  chili: () => once('chili', () => plain('#e0331f', '#ff8a66', wet)),
 
   // Pizza – base and cheese are per-pizza instances because they animate (bake).
-  pizzaBase: () => bakeBlend(textured('pizzaBaseRaw', { normalScale: 1, sheen: 0.4, sheenColor: new THREE.Color('#ffe9c4') }), 'pizzaBaseBaked'),
+  pizzaBase: () => bakeBlend(textured('pizzaBaseRaw', { rim: '#ffd496', clearcoat: 0.2, clearcoatRoughness: 0.4 }), 'pizzaBaseBaked'),
   // The cheese sheet is displaced by its own height (R of the roughness map)
   // and cut out by the colour alpha.
   cheese: () =>
     bakeBlend(
       textured('cheeseRaw', {
-        normalScale: 1,
-        clearcoat: 0.45,
-        clearcoatRoughness: 0.25,
-        sheen: 0.4,
-        sheenColor: new THREE.Color('#fff6d8'),
+        rim: '#fff1a6',
+        rimStrength: 0.4,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.2,
         alphaTest: 0.5,
         displacementMap: tex('cheeseRaw').roughnessMap,
-        displacementScale: 0.075,
+        displacementScale: 0.1,
       }),
       'cheeseBaked',
     ),
-  tomatoSauce: () => once('tomatoSauce', () => textured('tomatoSauce', wet)),
-  salami: () => once('salami', () => textured('salami', { clearcoat: 0.5, clearcoatRoughness: 0.25 })),
-  olive: () => once('olive', () => textured('olive', { clearcoat: 1, clearcoatRoughness: 0.08 })),
-  mushroom: () => once('mushroom', () => textured('mushroom', { sheen: 0.5 })),
-  mushroomSkin: () => once('mushroomSkin', () => new THREE.MeshPhysicalMaterial({ color: '#a27a52', roughness: 0.65, sheen: 0.4, sheenColor: new THREE.Color('#f3dfc4') })),
-  basil: () => once('basil', () => textured('basil', { side: THREE.DoubleSide, clearcoat: 0.6, clearcoatRoughness: 0.2 })),
-  pepper: () => once('pepper', () => textured('pepper', { clearcoat: 1, clearcoatRoughness: 0.1 })),
-  ham: () => once('ham', () => textured('ham', { clearcoat: 0.35, clearcoatRoughness: 0.3 })),
+  tomatoSauce: () => once('tomatoSauce', () => textured('tomatoSauce', { rim: '#ff4a2a', rimStrength: 0.2, sheen: 0, clearcoat: 0.15, clearcoatRoughness: 0.5 })),
+  salami: () => once('salami', () => textured('salami', { rim: '#ff6a60', rimStrength: 0.25, sheen: 0.1, clearcoat: 0.15, clearcoatRoughness: 0.5 })),
+  olive: () => once('olive', () => textured('olive', { rim: '#a988b8', rimStrength: 0.5, clearcoat: 1, clearcoatRoughness: 0.05 })),
+  mushroom: () => once('mushroom', () => textured('mushroom', { rim: '#fff2dc' })),
+  mushroomSkin: () => once('mushroomSkin', () => plain('#b98c5e', '#f0cfa4')),
+  basil: () => once('basil', () => textured('basil', { rim: '#b8f27e', rimStrength: 0.45, side: THREE.DoubleSide, ...wet, clearcoat: 0.6 })),
+  pepper: () => once('pepper', () => textured('pepper', { rim: '#ff9478', rimStrength: 0.45, clearcoat: 1, clearcoatRoughness: 0.06 })),
+  ham: () => once('ham', () => textured('ham', { rim: '#ffd6d6', rimStrength: 0.35, clearcoat: 0.4, clearcoatRoughness: 0.25 })),
 };

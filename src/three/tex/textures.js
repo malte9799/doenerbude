@@ -1,9 +1,14 @@
 import * as THREE from 'three';
 import BakeWorker from './bake.worker.js?worker&inline';
+import * as recipes from '../materials/recipes.js';
+import { bakeArrays } from './bake.js';
 
 // Procedural textures are baked off the main thread by a small worker pool.
 // Call `loadTextures(keys)` once (behind a loading screen), then read the
 // finished sets synchronously with `tex(key)`.
+//
+// Where workers are unavailable (strict sandboxes, CSP), baking falls back to
+// the main thread, one texture per frame so the loading screen stays alive.
 //
 // To swap a procedural texture for a painted / AI / Blender one later, put
 // pre-made images behind the same key here – nothing else changes.
@@ -11,28 +16,68 @@ import BakeWorker from './bake.worker.js?worker&inline';
 const sets = new Map();
 const pending = new Map();
 let pool = null;
+let workersBroken = false;
+
+const WORKER_TIMEOUT = 8000;
 
 function getPool() {
   if (pool) return pool;
   const size = Math.max(2, Math.min(6, (navigator.hardwareConcurrency || 4) - 1));
-  const workers = Array.from({ length: size }, () => ({ worker: new BakeWorker(), busy: false }));
+  let workers;
+  try {
+    workers = Array.from({ length: size }, () => ({ worker: new BakeWorker(), busy: false }));
+  } catch {
+    workersBroken = true;
+    workers = [];
+  }
   const queue = [];
   const pump = () => {
     for (const slot of workers) {
       if (slot.busy || !queue.length) continue;
-      const { key, resolve } = queue.shift();
+      const { key, resolve, reject } = queue.shift();
       slot.busy = true;
+      const timer = setTimeout(() => fail(new Error('worker timeout')), WORKER_TIMEOUT);
+      const fail = err => {
+        clearTimeout(timer);
+        workersBroken = true;
+        reject(err);
+        while (queue.length) queue.shift().reject(err);
+      };
+      slot.worker.onerror = fail;
       slot.worker.onmessage = ({ data }) => {
+        clearTimeout(timer);
         slot.busy = false;
         resolve(data);
         pump();
       };
-      slot.worker.postMessage({ key });
+      try {
+        slot.worker.postMessage({ key });
+      } catch (err) {
+        fail(err);
+      }
     }
   };
-  pool = { run: key => new Promise(resolve => (queue.push({ key, resolve }), pump())) };
+  pool = {
+    run: key =>
+      workersBroken
+        ? Promise.reject(new Error('workers unavailable'))
+        : new Promise((resolve, reject) => {
+            queue.push({ key, resolve, reject });
+            pump();
+          }),
+  };
   return pool;
 }
+
+// Main-thread fallback: bakes are serialised and each waits for the next frame.
+let mainChain = Promise.resolve();
+const bakeOnMainThread = key =>
+  (mainChain = mainChain.then(
+    () =>
+      new Promise(resolve => {
+        requestAnimationFrame(() => resolve(bakeArrays(recipes[key])));
+      }),
+  ));
 
 const toTexture = (data, width, height, wrapU, wrapV, srgb) => {
   const tex = new THREE.DataTexture(data, width, height);
@@ -54,6 +99,7 @@ function load(key) {
       key,
       getPool()
         .run(key)
+        .catch(() => bakeOnMainThread(key))
         .then(({ width, height, wrapU, wrapV, color, normals, rough }) => {
           const set = {
             map: toTexture(color, width, height, wrapU, wrapV, true),

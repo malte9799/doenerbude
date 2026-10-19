@@ -76,8 +76,9 @@ Pizzavarianten sind Zutaten-Kombinationen im Baukasten und brauchen keine eigene
 
 ## 6. 3D-Stil
 
-- **Formen:** weich, leicht überzeichnet, rund – angelehnt an Microsoft Fluent Emoji 3D.
-- **Oberflächen:** echte Texturen statt nur Farbe. Jede Oberfläche hat Farbe, Relief (Normal Map) und Glanz-Variation.
+- **Formen:** klar cartoonig im Stil von Microsoft Fluent Emoji 3D: wenige, große, pralle Teile, alles gerundet und überzeichnet. Kein Mittelding zwischen Foto und Spielzeug.
+- **Farben:** satt und leuchtend, mit weichem Verlauf (oben heller, unten wärmer) und farbigem Randschimmer.
+- **Oberflächen:** echte Texturen statt nur Farbe, aber gemalt statt fotografisch: Details sind klare, lesbare Formen (Sesam, Fettpunkte, Blattadern, Röstflecken), kein Rauschen. Rote Lebensmittel eher matt, sonst werden sie rosa.
   - Brot: Poren, Sesam, Röstverlauf
   - Fleisch: Fasern, Röstkanten, Fettglanz
   - Käse: Blasen, Bräunung

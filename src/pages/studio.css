@@ -128,3 +128,14 @@
   align-items: center;
   cursor: pointer;
 }
+
+.studio__error {
+  position: absolute;
+  inset: auto 24px 24px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--c-red);
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}

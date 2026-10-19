@@ -2,6 +2,12 @@ import { clamp01, fbm, hex, lerp, mix, ridged, smooth, worley } from '../tex/noi
 
 // Texture recipes: pure definitions { width, height, normal, wrapU, wrapV, fn }.
 // They run inside Web Workers (see tex/textures.js) and contain no three.js.
+//
+// Style: Fluent-emoji cartoon. Clean, saturated base colours with soft
+// gradients; details (seeds, fat, veins, char spots) are drawn as clear,
+// readable shapes – never photographic grain. Normal strength stays low so
+// surfaces read smooth and plump.
+//
 // UV conventions (see geometry helpers):
 //   planar  – u,v = world x,z scaled so 1 texture ≈ 2 units (20 cm)
 //   disc    – centre (0.5, 0.5), rim at radius 0.5   (slices: salami, tomato …)
@@ -18,45 +24,47 @@ const ellipseE = (w, a, b, angle) => {
   return (x / a) ** 2 + (y / b) ** 2;
 };
 const dome = e => (e < 1 ? Math.sqrt(1 - e) : 0);
+// Crisp but anti-aliased edge for drawn shapes.
+const ink = (e, soft = 0.12) => smooth(1, 1 - soft, e);
 
 // ───────────────────────────────── Bread ─────────────────────────────────
 
 export const breadCrust = {
   width: 1024,
-  normal: 1.6,
+  normal: 0.9,
   fn(u, v, o) {
-    const n = fbm(u, v, { scale: 5, octaves: 5, seed: 3 });
-    const fine = fbm(u, v, { scale: 40, octaves: 3, seed: 5 });
-    let c = mix(hex('#EDBE74'), hex('#B36A2A'), smooth(-0.35, 0.55, n));
-    c = mix(c, hex('#F6DDAD'), smooth(0.35, 0.85, fine) * 0.35); // flour dust
-    let h = 0.5 + n * 0.12 + fine * 0.04;
-    let r = 0.48 + fine * 0.1;
-
-    const p = worley(u, v, { scale: 64, seed: 9 });
-    const pore = p.id < 0.45 ? smooth(0.28, 0.06, p.f1) : 0;
-    c = mix(c, hex('#8A4E20'), pore * 0.45);
-    h -= pore * 0.12;
-
-    // Sesame (light, raised) and nigella (black, small) seeds.
-    const s = worley(u, v, { scale: 13, seed: 11, jitter: 0.75 });
-    if (s.id < 0.5) {
-      const e = ellipseE(s, 0.17, 0.085, s.id * 40);
-      const d = dome(e);
-      if (d > 0) {
-        c = mix(hex('#DDBF86'), hex('#FFF3D6'), Math.pow(d, 0.6));
-        h += d * 0.3;
-        r = 0.38;
-      } else if (e < 1.9) {
-        c = mix(c, hex('#8E5524'), (1 - (e - 1) / 0.9) * 0.35); // contact shadow
+    const n = fbm(u, v, { scale: 3, octaves: 3, seed: 3 });
+    const fine = fbm(u, v, { scale: 24, octaves: 2, seed: 5 });
+    let c = mix(hex('#F8C672'), hex('#CF7E33'), smooth(-0.55, 0.65, n));
+    c = mix(c, hex('#FBDDA0'), smooth(0.3, 0.8, fine) * 0.25);
+    let h = 0.5 + n * 0.04 + fine * 0.015;
+    let r = 0.42;
+    // Tiny dark specks (bake marks) between the seeds.
+    const d = worley(u, v, { scale: 44, seed: 7 });
+    if (d.id < 0.3) {
+      const k = ink(ellipseE(d, 0.16, 0.11, d.id * 20), 0.3);
+      c = mix(c, hex('#B8682A'), k * 0.55);
+      h -= k * 0.05;
+    }
+    const s = worley(u, v, { scale: 13, seed: 11, jitter: 0.7 });
+    if (s.id < 0.55) {
+      const e = ellipseE(s, 0.19, 0.095, s.id * 40);
+      const k = ink(e);
+      if (k > 0) {
+        // Seed with its own soft highlight towards the top.
+        c = mix(c, mix(hex('#F4DDAE'), hex('#FFF8E8'), clamp01(0.6 - s.dy * 2)), k);
+        h += dome(e) * 0.45;
+        r = lerp(r, 0.3, k);
       }
     }
-    const g = worley(u, v, { scale: 19, seed: 21, jitter: 0.75 });
-    if (g.id < 0.28) {
-      const d = dome(ellipseE(g, 0.11, 0.065, g.id * 31));
-      if (d > 0) {
-        c = mix(hex('#3C332D'), hex('#151212'), d);
-        h += d * 0.22;
-        r = 0.32;
+    const g = worley(u, v, { scale: 13, seed: 21, jitter: 0.7 });
+    if (g.id < 0.16) {
+      const e = ellipseE(g, 0.13, 0.08, g.id * 31);
+      const k = ink(e);
+      if (k > 0) {
+        c = mix(c, hex('#3B2A22'), k);
+        h += dome(e) * 0.3;
+        r = lerp(r, 0.25, k);
       }
     }
     o.color = c;
@@ -66,26 +74,17 @@ export const breadCrust = {
 };
 
 export const breadCrumb = {
-  width: 1024,
-  normal: 0.9,
+  width: 512,
+  normal: 0.7,
   fn(u, v, o) {
-    const n = fbm(u, v, { scale: 6, octaves: 4, seed: 31 });
-    let c = mix(hex('#FBF1DC'), hex('#EFDDB6'), smooth(-0.4, 0.6, n));
-    let h = 0.6 + n * 0.05;
-    // Airy crumb: many small, slightly stretched pores at three sizes.
-    for (const [scale, seed, size, depth, amt] of [
-      [34, 33, 0.34, 0.22, 0.5],
-      [70, 35, 0.32, 0.14, 0.4],
-      [140, 37, 0.3, 0.08, 0.3],
-    ]) {
-      const w = worley(u, v, { scale, scaleY: Math.round(scale * 0.8), seed });
-      const hole = w.id < 0.6 ? smooth(size, size * 0.3, w.f1) : 0;
-      h -= hole * depth;
-      c = mix(c, hex('#DCC08E'), hole * amt);
-    }
+    const n = fbm(u, v, { scale: 4, octaves: 3, seed: 31 });
+    let c = mix(hex('#FFF6E4'), hex('#F8E6C2'), smooth(-0.4, 0.6, n));
+    const w = worley(u, v, { scale: 14, seed: 33 });
+    const pore = w.id < 0.5 ? smooth(0.3, 0.12, w.f1) : 0;
+    c = mix(c, hex('#EED6A8'), pore * 0.8);
     o.color = c;
-    o.height = h;
-    o.rough = 0.9;
+    o.height = 0.6 + n * 0.05 - pore * 0.15;
+    o.rough = 0.8;
   },
 };
 
@@ -93,43 +92,46 @@ export const breadCrumb = {
 
 export const doenerMeat = {
   width: 512,
-  normal: 2.2,
+  normal: 0.9,
   wrapV: false,
   fn(u, v, o) {
-    const fibres = ridged(u, v, { scale: 3, scaleY: 36, octaves: 3, seed: 41 });
-    const n = fbm(u, v, { scale: 4, octaves: 4, seed: 43 });
-    const crisp = fbm(u, v, { scale: 24, octaves: 2, seed: 45 });
-    // Caramelised, irregular edges; juicy lighter centre.
-    const edgeDist = Math.min(v, 1 - v, u * 0.4, (1 - u) * 0.4);
-    const char = smooth(0.14, 0.01, edgeDist + n * 0.06);
-    let c = mix(hex('#D69A68'), hex('#B4693B'), smooth(-0.4, 0.5, n));
-    c = mix(c, hex('#E8B486'), fibres * fibres * 0.3);
-    c = mix(c, hex('#7A3A18'), char * (0.7 + crisp * 0.3));
+    const n = fbm(u, v, { scale: 3, octaves: 3, seed: 43 });
+    // Juicy lighter stripes along the slice, darker caramelised rim.
+    const stripes = 0.5 + 0.5 * Math.sin((v * 4.5 + n * 0.6) * Math.PI * 2);
+    const fibres = ridged(u, v, { scale: 2, scaleY: 18, octaves: 2, seed: 41 });
+    const edgeDist = Math.min(v, 1 - v, u * 0.45, (1 - u) * 0.45);
+    const char = smooth(0.16, 0.03, edgeDist + n * 0.05);
+    let c = mix(hex('#DE915A'), hex('#C1703C'), smooth(-0.5, 0.6, n));
+    c = mix(c, hex('#F4B27C'), smooth(0.55, 0.9, stripes) * 0.6);
+    c = mix(c, hex('#9C4B22'), char * 0.8);
     o.color = c;
-    o.height = 0.5 + fibres * 0.22 + char * crisp * 0.25;
-    o.rough = lerp(0.45, 0.28, smooth(0.1, 0.7, n)); // fat sheen
+    o.height = 0.5 + stripes * 0.06 + fibres * 0.06 + char * 0.05;
+    o.rough = lerp(0.42, 0.3, stripes);
   },
 };
 
 export const lettuce = {
   width: 512,
-  normal: 1.4,
+  normal: 1,
   wrapV: false,
   fn(u, v, o) {
-    const veins = ridged(u, v, { scale: 6, scaleY: 2, octaves: 3, seed: 51 });
-    const n = fbm(u, v, { scale: 5, octaves: 4, seed: 53 });
-    const edge = smooth(0.15, 0.5, Math.abs(v - 0.5) * 2 + n * 0.2);
-    let c = mix(hex('#E6F2BE'), hex('#8CC452'), edge);
-    c = mix(c, hex('#F5FAE2'), smooth(0.85, 0.98, veins) * 0.6);
+    const across = Math.abs(v - 0.5) * 2;
+    const n = fbm(u, v, { scale: 4, octaves: 3, seed: 53 });
+    let c = mix(hex('#E7F7B4'), hex('#7CC447'), smooth(0.15, 0.95, across + n * 0.15));
+    // Midrib and side veins as clean light lines.
+    const mid = smooth(0.06, 0.02, across);
+    const side = Math.abs(Math.sin((u * 7 - across * 2.2) * Math.PI));
+    const vein = smooth(0.12, 0.03, side) * smooth(0.95, 0.4, across);
+    c = mix(c, hex('#F6FDE2'), Math.max(mid, vein * 0.8));
     o.color = c;
-    o.height = 0.5 + n * 0.25 + smooth(0.8, 1, veins) * 0.15;
-    o.rough = 0.42;
+    o.height = 0.5 + Math.max(mid, vein) * 0.12 + n * 0.05;
+    o.rough = 0.35;
   },
 };
 
 export const tomatoSlice = {
   width: 512,
-  normal: 1.8,
+  normal: 0.8,
   wrapU: false,
   wrapV: false,
   fn(u, v, o) {
@@ -137,39 +139,29 @@ export const tomatoSlice = {
     const y = (v - 0.5) * 2;
     const r = Math.hypot(x, y);
     const a = Math.atan2(y, x);
-    const n = fbm(u, v, { scale: 6, octaves: 4, seed: 61 });
-    // Four chambers separated by septa, wobbling.
-    const sept = Math.abs(Math.cos(2 * (a + n * 0.25)));
-    const septum = smooth(0.82, 0.96, sept);
-    const core = smooth(0.24, 0.12, r + n * 0.04);
-    const wall = smooth(0.66, 0.76, r + n * 0.03);
-    const skin = smooth(0.92, 0.96, r);
-    const chamber = (1 - wall) * (1 - septum) * (1 - core);
-
-    let c = mix(hex('#EC4A33'), hex('#E33A28'), n * 0.5 + 0.5); // flesh
-    c = mix(c, hex('#F58B6A'), chamber * 0.85); // jelly
-    c = mix(c, hex('#F7A383'), core * 0.7);
-    c = mix(c, hex('#C51F18'), skin);
-    let h = 0.6 - chamber * 0.18;
-
-    // Seeds sit in the jelly near the septa.
-    const s = worley(u, v, { scale: 26, seed: 63, jitter: 0.6 });
-    if (chamber > 0.5 && s.id < 0.7) {
-      const d = dome(ellipseE(s, 0.24, 0.14, a));
-      if (d > 0) {
-        c = mix(c, hex('#F7DDA0'), Math.pow(d, 0.5));
-        h += d * 0.12;
-      }
+    const sept = Math.abs(Math.cos(2 * a));
+    const chamber = smooth(0.62, 0.56, r) * smooth(0.2, 0.26, r) * smooth(0.86, 0.72, sept);
+    let c = mix(hex('#FF5A3C'), hex('#F23B26'), smooth(0.3, 0.9, r));
+    c = mix(c, hex('#FF8E6A'), chamber);
+    c = mix(c, hex('#FF8466'), smooth(0.2, 0.12, r) * 0.7);
+    c = mix(c, hex('#D8231A'), smooth(0.88, 0.93, r));
+    let h = 0.6 - chamber * 0.1;
+    // Seeds: a few clear drops in each chamber.
+    const s = worley(u, v, { scale: 14, seed: 63, jitter: 0.5 });
+    if (chamber > 0.6 && s.id < 0.8) {
+      const e = ellipseE(s, 0.24, 0.15, a);
+      c = mix(c, hex('#FFE7AE'), ink(e, 0.2));
+      h += dome(e) * 0.12;
     }
     o.color = c;
     o.height = h;
-    o.rough = 0.22 + chamber * 0.05;
+    o.rough = 0.4;
   },
 };
 
 export const cucumberSlice = {
   width: 512,
-  normal: 1.6,
+  normal: 0.8,
   wrapU: false,
   wrapV: false,
   fn(u, v, o) {
@@ -177,306 +169,268 @@ export const cucumberSlice = {
     const y = (v - 0.5) * 2;
     const r = Math.hypot(x, y);
     const a = Math.atan2(y, x);
-    const n = fbm(u, v, { scale: 8, octaves: 3, seed: 71 });
-    let c = mix(hex('#DDEDB2'), hex('#C7E08F'), smooth(0.2, 0.7, r));
-    // Three-lobed seed bed.
-    const lobe = Math.cos(3 * a) * 0.08;
-    const bed = smooth(0.52, 0.42, r - lobe) * smooth(0.1, 0.18, r);
-    c = mix(c, hex('#E8F2C8'), bed * 0.7);
-    const skin = smooth(0.88, 0.93, r + n * 0.02);
-    c = mix(c, mix(hex('#2F5E22'), hex('#4E8433'), smooth(-0.2, 0.4, n)), skin);
+    let c = mix(hex('#EEF9CF'), hex('#C5E585'), smooth(0.15, 0.85, r));
+    const bed = smooth(0.5, 0.42, r - Math.cos(3 * a) * 0.07) * smooth(0.08, 0.16, r);
+    c = mix(c, hex('#F6FCE4'), bed * 0.6);
+    const skin = smooth(0.86, 0.9, r);
+    const stripe = 0.5 + 0.5 * Math.sin(a * 14);
+    c = mix(c, mix(hex('#3C8A2C'), hex('#5BAA3E'), stripe), skin);
     let h = 0.6;
-    const s = worley(u, v, { scale: 20, seed: 73, jitter: 0.5 });
-    if (bed > 0.6 && s.id < 0.8) {
-      const d = dome(ellipseE(s, 0.28, 0.13, a));
-      if (d > 0) {
-        c = mix(c, hex('#F4F8E2'), d * 0.9);
-        h += d * 0.1;
-      }
+    const s = worley(u, v, { scale: 11, seed: 73, jitter: 0.4 });
+    if (bed > 0.6 && s.id < 0.85) {
+      const e = ellipseE(s, 0.3, 0.15, a);
+      c = mix(c, hex('#FBFFF0'), ink(e, 0.25));
+      h += dome(e) * 0.08;
     }
     o.color = c;
-    o.height = h + n * 0.03;
-    o.rough = 0.25;
+    o.height = h;
+    o.rough = 0.22;
   },
 };
 
 export const onion = {
   width: 256,
-  normal: 1,
-  wrapV: true,
+  normal: 0.5,
   fn(u, v, o) {
-    // Torus uv: v around the tube. Outer side (v≈0) purple, inside white.
+    // Torus uv: v around the tube. Outer side purple, inside white.
     const side = 0.5 + 0.5 * Math.cos(v * Math.PI * 2);
-    const n = fbm(u, v, { scale: 16, scaleY: 2, octaves: 3, seed: 81 });
-    let c = mix(hex('#F3E6EE'), hex('#8E3B78'), smooth(0.35, 0.75, side + n * 0.15));
-    o.color = c;
-    o.height = 0.5 + n * 0.1;
-    o.rough = 0.3;
+    o.color = mix(hex('#FBEFF7'), hex('#A6458F'), smooth(0.35, 0.8, side));
+    o.height = 0.5;
+    o.rough = 0.25;
   },
 };
 
-export const redCabbage = {
+const cabbage = (dark, light, seed) => ({
   width: 256,
-  normal: 1,
+  normal: 0.6,
   fn(u, v, o) {
-    const n = fbm(u, v, { scale: 3, scaleY: 1, octaves: 4, seed: 91 });
-    const vein = smooth(0.35, 0.75, n);
-    o.color = mix(hex('#6E2159'), hex('#E9D2E6'), vein * 0.8);
-    o.height = 0.5 + n * 0.2;
-    o.rough = 0.35;
+    const n = fbm(u, v, { scale: 2, scaleY: 1, octaves: 3, seed });
+    const vein = smooth(0.82, 0.96, 0.5 + 0.5 * Math.sin((u * 6 + n) * Math.PI * 2));
+    o.color = mix(mix(hex(dark), hex(light), smooth(-0.6, 0.8, n) * 0.35), hex(light), vein * 0.8);
+    o.height = 0.5 + vein * 0.1;
+    o.rough = 0.32;
   },
-};
-
-export const whiteCabbage = {
-  width: 256,
-  normal: 1,
-  fn(u, v, o) {
-    const n = fbm(u, v, { scale: 3, scaleY: 1, octaves: 4, seed: 93 });
-    o.color = mix(hex('#D8E6A6'), hex('#F6F7E4'), smooth(-0.2, 0.6, n));
-    o.height = 0.5 + n * 0.2;
-    o.rough = 0.38;
-  },
-};
+});
+export const redCabbage = cabbage('#7A2A6E', '#D9A0CF', 91);
+export const whiteCabbage = cabbage('#DCEBA6', '#FBFEEA', 93);
 
 export const feta = {
   width: 256,
-  normal: 2.4,
+  normal: 0.8,
   fn(u, v, o) {
-    const n = fbm(u, v, { scale: 6, octaves: 5, seed: 101 });
-    const w = worley(u, v, { scale: 10, seed: 103 });
-    const pit = w.id < 0.5 ? smooth(0.3, 0.08, w.f1) : 0;
-    o.color = mix(mix(hex('#FBF8F0'), hex('#EDE6D4'), smooth(0, 0.8, n)), hex('#DDD3BC'), pit * 0.6);
-    o.height = 0.5 + n * 0.3 - pit * 0.3;
-    o.rough = 0.82;
+    const w = worley(u, v, { scale: 6, seed: 103 });
+    const pit = w.id < 0.45 ? smooth(0.28, 0.12, w.f1) : 0;
+    o.color = mix(hex('#FFFDF6'), hex('#EFE7D3'), pit);
+    o.height = 0.5 - pit * 0.25;
+    o.rough = 0.7;
   },
 };
 
 export const garlicSauce = {
   width: 256,
-  normal: 0.6,
+  normal: 0.3,
   fn(u, v, o) {
-    const n = fbm(u, v, { scale: 8, scaleY: 2, octaves: 3, seed: 111 });
-    const w = worley(u, v, { scale: 24, scaleY: 6, seed: 113 });
-    const herb = w.id < 0.18 ? smooth(0.22, 0.12, w.f1) : 0;
-    o.color = mix(mix(hex('#FBF7EC'), hex('#EFE8D5'), smooth(-0.3, 0.6, n)), hex('#5E7D35'), herb);
-    o.height = 0.5 + n * 0.1;
-    o.rough = 0.18;
+    const w = worley(u, v, { scale: 10, scaleY: 3, seed: 113 });
+    const herb = w.id < 0.2 ? ink(ellipseE(w, 0.22, 0.1, w.id * 9)) : 0;
+    o.color = mix(hex('#FFFCF4'), hex('#6FA03C'), herb);
+    o.height = 0.5;
+    o.rough = 0.15;
   },
 };
 
 // ───────────────────────────────── Pizza ─────────────────────────────────
 
 // Pizza base on a lathe: u around (periodic), v along the profile from the
-// centre (0) over the rim (≈0.55–0.82) to the underside (1). `baked` toggles
-// pale dough ↔ leopard-spotted crust.
-const BASE_U = 64;
-const BASE_V = 16;
+// centre (0) over the rim (0.55–0.85) to the underside (0.85–1). `baked`
+// toggles pale dough ↔ golden crust with a few soft char spots.
+const BASE_U = 36;
+const BASE_V = 9;
 const baseRecipe = baked => (u, v, o) => {
-  const n = fbm(u, v, { scale: 10, scaleY: 3, octaves: 5, seed: 121 });
-  const fine = fbm(u, v, { scale: 80, scaleY: 20, octaves: 2, seed: 123 });
-  const rim = smooth(0.5, 0.6, v) * smooth(0.9, 0.8, v);
-  const under = smooth(0.8, 0.9, v);
-  const flour = smooth(0.3, 0.9, fine) * 0.45;
-  let h = 0.5 + n * 0.12 + fine * 0.04;
+  const n = fbm(u, v, { scale: 8, scaleY: 2, octaves: 3, seed: 121 });
+  const rim = smooth(0.52, 0.6, v) * smooth(0.9, 0.82, v);
+  const under = smooth(0.82, 0.9, v);
+  let h = 0.5 + n * 0.04;
   let c;
-  let r = 0.7;
   if (!baked) {
-    c = mix(hex('#F4E1B8'), hex('#EAD1A0'), smooth(-0.4, 0.6, n));
-    c = mix(c, hex('#FFFBF1'), flour * (0.5 + under));
-    r = 0.75;
+    c = mix(hex('#FBEACB'), hex('#F2D8A8'), smooth(-0.5, 0.6, n) * 0.7 + under * 0.3);
   } else {
-    const top = mix(hex('#F0D6A2'), hex('#E8C084'), n * 0.5 + 0.5);
-    const crust = mix(hex('#E9A858'), hex('#B86A2C'), smooth(-0.2, 0.6, n + rim * 0.2));
+    const top = hex('#F8DDA6');
+    const crust = mix(hex('#F7B65C'), hex('#E08A3A'), smooth(-0.4, 0.7, n) * 0.6 + (v - 0.55) * 1.2);
     c = mix(top, crust, rim);
-    c = mix(c, mix(hex('#C98A48'), hex('#9C5B27'), n * 0.5 + 0.5), under);
-    // Leopard spots: char blisters on the rim.
-    const warp = fbm(u, v, { scale: 20, scaleY: 5, octaves: 3, seed: 127 });
-    const w = worley(u, v, { scale: BASE_U, scaleY: BASE_V, seed: 125 });
-    if (w.id < 0.3) {
-      const size = 0.08 + w.id * 0.55;
-      const d = w.f1 + warp * 0.18 + fine * 0.05;
-      const halo = smooth(size * 2.2, size, d) * (rim + under * 0.3);
-      const blister = smooth(size, size * 0.4, d) * (rim + under * 0.3);
-      c = mix(c, hex('#9A5422'), halo * 0.5);
-      c = mix(c, mix(hex('#4A2814'), hex('#1E120C'), blister), blister * 0.92);
-      h += blister * 0.1 + halo * 0.04;
+    c = mix(c, hex('#D68A45'), under);
+    // Small raised blisters with a darker ring.
+    const b = worley(u, v, { scale: 110, scaleY: 28, seed: 129 });
+    if (b.id < 0.35) {
+      const size = 0.22 + b.id * 0.4;
+      const ringK = smooth(size * 1.4, size, b.f1) - smooth(size, size * 0.6, b.f1);
+      const top = smooth(size, size * 0.4, b.f1);
+      c = mix(c, hex('#C8742F'), ringK * 0.45 * (rim + under * 0.5));
+      c = mix(c, hex('#FFD596'), top * 0.35 * rim);
+      h += top * 0.08 * (rim + under * 0.5);
     }
-    c = mix(c, hex('#F7EBD3'), flour * under * 0.8);
-    r = 0.62;
+    // Flour dust on the underside and lower rim.
+    const fl = worley(u, v, { scale: 160, scaleY: 40, seed: 131 });
+    if (fl.id < 0.25) c = mix(c, hex('#FFF1D6'), ink(ellipseE(fl, 0.2, 0.2, 0), 0.4) * smooth(0.7, 0.95, v) * 0.7);
+    const w = worley(u, v, { scale: BASE_U, scaleY: BASE_V, seed: 125 });
+    if (w.id < 0.32) {
+      const size = 0.16 + w.id * 0.8;
+      const spot = smooth(size, size * 0.55, w.f1 + n * 0.08) * (rim + under * 0.4);
+      c = mix(c, mix(hex('#B8652B'), hex('#7A3B1A'), smooth(size * 0.5, 0, w.f1)), spot * 0.9);
+      h += spot * 0.05;
+    }
   }
   o.color = c;
   o.height = h;
-  o.rough = r;
+  o.rough = baked ? 0.5 : 0.65;
 };
-export const pizzaBaseRaw = { width: 2048, height: 512, normal: 1.4, wrapV: false, fn: baseRecipe(false) };
-export const pizzaBaseBaked = { width: 2048, height: 512, normal: 1.4, wrapV: false, fn: baseRecipe(true) };
+export const pizzaBaseRaw = { width: 2048, height: 512, normal: 0.8, wrapV: false, fn: baseRecipe(false) };
+export const pizzaBaseBaked = { width: 2048, height: 512, normal: 0.8, wrapV: false, fn: baseRecipe(true) };
 
 export const tomatoSauce = {
   width: 1024,
-  normal: 1.4,
+  normal: 0.6,
   fn(u, v, o) {
-    const n = fbm(u, v, { scale: 6, octaves: 5, seed: 131 });
-    const pulp = fbm(u, v, { scale: 30, octaves: 3, seed: 133 });
-    let c = mix(hex('#C42A1E'), hex('#A01810'), smooth(-0.4, 0.5, n));
-    c = mix(c, hex('#DE4B2E'), smooth(0.3, 0.8, pulp) * 0.6);
-    let h = 0.5 + n * 0.08 + pulp * 0.08;
-    const w = worley(u, v, { scale: 34, seed: 135, jitter: 0.8 });
-    if (w.id < 0.14) {
-      const d = dome(ellipseE(w, 0.16, 0.06, w.id * 50));
-      if (d > 0) {
-        c = mix(c, hex('#3F5C22'), Math.min(1, d * 2)); // oregano
-        h += d * 0.05;
-      }
+    const n = fbm(u, v, { scale: 4, octaves: 3, seed: 131 });
+    let c = mix(hex('#E0301C'), hex('#B82015'), smooth(-0.5, 0.6, n));
+    let h = 0.5 + n * 0.05;
+    const w = worley(u, v, { scale: 18, seed: 135, jitter: 0.8 });
+    if (w.id < 0.12) {
+      const e = ellipseE(w, 0.2, 0.08, w.id * 50);
+      c = mix(c, hex('#4E7E2A'), ink(e));
+      h += dome(e) * 0.06;
     }
     o.color = c;
     o.height = h;
-    o.rough = 0.26 + pulp * 0.05;
+    o.rough = 0.45;
   },
 };
 
-// Melted mozzarella. Same relief raw/baked; baked browns the bubble tops.
 // Melted mozzarella as one sheet over the pizza (disc UV, non-tiling).
 // Alpha cuts the lobed edge and a few holes where the sauce shows through;
 // height (also used for real displacement) melts down towards those edges.
-// Same relief raw/baked; baked browns the bubble tops.
+// Same relief raw/baked; baked turns the bubble tops golden.
 const cheeseRecipe = baked => (u, v, o) => {
   const x = (u - 0.5) * 2;
   const y = (v - 0.5) * 2;
   const r = Math.hypot(x, y);
-  const n = fbm(u, v, { scale: 7, octaves: 4, seed: 145 });
-  const lobes = fbm(u, v, { scale: 5, octaves: 3, seed: 147 });
-  const edge = 0.9 + lobes * 0.09;
-  const cover = smooth(edge, edge - 0.1, r);
-  const holes = smooth(-0.32, -0.46, fbm(u, v, { scale: 6, octaves: 3, seed: 149 }));
+  const n = fbm(u, v, { scale: 5, octaves: 3, seed: 145 });
+  const lobes = fbm(u, v, { scale: 4, octaves: 2, seed: 147 });
+  const edge = 0.88 + lobes * 0.1;
+  const cover = smooth(edge, edge - 0.08, r);
+  const holes = smooth(-0.36, -0.48, fbm(u, v, { scale: 5, octaves: 2, seed: 149 }));
   const coverage = cover * (1 - holes);
-  const w = worley(u, v, { scale: 11, seed: 141 });
-  const w2 = worley(u, v, { scale: 27, seed: 143 });
-  const bubble = Math.pow(clamp01(1 - w.f1 * 1.2), 1.5);
-  const small = Math.pow(clamp01(1 - w2.f1 * 1.3), 2);
-  const relief = 0.45 + bubble * 0.4 + small * 0.12 + n * 0.06;
+  const w = worley(u, v, { scale: 7, seed: 141 });
+  const bubble = Math.pow(clamp01(1 - w.f1 * 1.15), 1.4);
+  const relief = 0.5 + bubble * 0.42 + n * 0.04;
   const h = relief * smooth(0.2, 0.9, coverage);
-  let c = mix(hex('#FFF7E0'), hex('#F7E4A6'), smooth(-0.3, 0.7, n) * 0.8 + (1 - coverage) * 0.4);
+  let c = mix(hex('#FFF6D2'), hex('#FFE89A'), smooth(-0.4, 0.6, n) * 0.6 + (1 - coverage) * 0.3);
   if (baked) {
-    c = mix(c, hex('#F6D47E'), 0.4);
-    const brown = smooth(0.6, 0.82, relief + n * 0.12) * (w.id < 0.55 ? 1 : 0.35);
-    c = mix(c, hex('#DD9C48'), brown);
-    c = mix(c, hex('#A2602A'), smooth(0.84, 0.98, relief + n * 0.1) * brown);
+    c = mix(c, hex('#FFDF73'), 0.55);
+    const golden = smooth(0.7, 0.88, relief) * (w.id < 0.5 ? 1 : 0.2);
+    c = mix(c, hex('#F4A83E'), golden);
   }
   o.color = c;
   o.alpha = smooth(0.3, 0.5, coverage);
   o.height = h;
-  o.rough = baked ? 0.3 : 0.36;
+  o.rough = 0.3;
 };
-export const cheeseRaw = { width: 1024, normal: 1.4, wrapU: false, wrapV: false, fn: cheeseRecipe(false) };
-export const cheeseBaked = { width: 1024, normal: 1.4, wrapU: false, wrapV: false, fn: cheeseRecipe(true) };
+export const cheeseRaw = { width: 1024, normal: 0.8, wrapU: false, wrapV: false, fn: cheeseRecipe(false) };
+export const cheeseBaked = { width: 1024, normal: 0.8, wrapU: false, wrapV: false, fn: cheeseRecipe(true) };
 
 export const salami = {
   width: 512,
-  normal: 1.4,
+  normal: 0.6,
   wrapU: false,
   wrapV: false,
   fn(u, v, o) {
     const x = (u - 0.5) * 2;
     const y = (v - 0.5) * 2;
     const r = Math.hypot(x, y);
-    const n = fbm(u, v, { scale: 5, octaves: 4, seed: 151 });
-    let c = mix(hex('#C9393A'), hex('#9E2427'), smooth(-0.4, 0.5, n));
-    let h = 0.5 + n * 0.05;
-    let rough = 0.42;
-    // Fat: irregular flecks of different sizes.
-    const warp = fbm(u, v, { scale: 16, octaves: 2, seed: 155 }) * 0.18;
-    const f = worley(u + warp * 0.05, v - warp * 0.05, { scale: 9, seed: 153 });
-    if (f.id < 0.55) {
-      const size = 0.16 + f.id * 0.22;
-      const fat = smooth(size, size * 0.55, f.f1 + warp);
-      c = mix(c, hex('#F7E1D8'), fat);
-      h += fat * 0.06;
-      rough = lerp(rough, 0.28, fat);
+    const n = fbm(u, v, { scale: 3, octaves: 3, seed: 151 });
+    let c = mix(hex('#F04A46'), hex('#D23238'), smooth(-0.5, 0.6, n) * 0.6 + r * 0.4);
+    let h = 0.5;
+    // A handful of big, round fat dots – the emoji salami look.
+    const f = worley(u, v, { scale: 5, seed: 153, jitter: 0.6 });
+    if (f.id < 0.7 && r < 0.78) {
+      const size = 0.17 + f.id * 0.12;
+      const k = smooth(size, size * 0.85, f.f1);
+      c = mix(c, hex('#FFE9E2'), k);
+      h += k * 0.05;
     }
-    const p = worley(u, v, { scale: 22, seed: 157 });
-    if (p.id < 0.07) {
-      const d = dome(ellipseE(p, 0.16, 0.13, p.id * 60));
-      c = mix(c, hex('#241818'), Math.min(1, d * 3));
-      h += d * 0.08;
-    }
-    c = mix(c, hex('#6E2019'), smooth(0.86, 0.95, r));
+    c = mix(c, hex('#A3302C'), smooth(0.86, 0.92, r));
     o.color = c;
     o.height = h;
-    o.rough = rough;
+    o.rough = 0.5;
   },
 };
 
 export const olive = {
   width: 128,
-  normal: 0.8,
+  normal: 0.3,
   fn(u, v, o) {
-    const n = fbm(u, v, { scale: 4, octaves: 3, seed: 161 });
-    o.color = mix(hex('#3A2733'), hex('#1E1519'), smooth(-0.4, 0.5, n));
-    o.height = 0.5 + n * 0.1;
-    o.rough = 0.22;
+    const n = fbm(u, v, { scale: 2, octaves: 2, seed: 161 });
+    o.color = mix(hex('#45324A'), hex('#271B2A'), smooth(-0.5, 0.5, n));
+    o.height = 0.5;
+    o.rough = 0.15;
   },
 };
 
 export const mushroom = {
   width: 256,
-  normal: 1.2,
+  normal: 0.5,
   wrapU: false,
   wrapV: false,
   fn(u, v, o) {
-    // Fibres run vertically through the stem, fan out into the cap.
     // Disc-style UV over the slice: gills darken just under the cap.
-    const fib = ridged(u, v, { scale: 18, scaleY: 4, octaves: 2, seed: 171 });
-    const n = fbm(u, v, { scale: 4, octaves: 3, seed: 173 });
     const gills = smooth(0.62, 0.52, v) * smooth(0.38, 0.47, v) * smooth(0.12, 0.3, Math.abs(u - 0.5));
-    let c = mix(hex('#F1E4CF'), hex('#E2CDAE'), smooth(-0.3, 0.6, n));
-    c = mix(c, hex('#B99876'), gills * 0.7);
-    c = mix(c, hex('#D9C2A0'), smooth(0.9, 1, fib) * 0.25);
+    const lines = 0.5 + 0.5 * Math.sin(u * 60);
+    let c = mix(hex('#FBF1E2'), hex('#F0DFC6'), smooth(0.3, 0.9, v));
+    c = mix(c, mix(hex('#C9A57D'), hex('#B48E66'), lines), gills * 0.8);
     o.color = c;
-    o.height = 0.5 + fib * 0.04 - gills * 0.05;
-    o.rough = 0.55;
+    o.height = 0.5 - gills * 0.04;
+    o.rough = 0.5;
   },
 };
 
 export const basil = {
   width: 256,
-  normal: 1.6,
+  normal: 0.8,
   wrapU: false,
   wrapV: false,
   fn(u, v, o) {
-    const mid = smooth(0.035, 0, Math.abs(v - 0.5));
-    // Side veins: diagonal lines leaving the midrib.
-    const side = Math.abs(Math.sin((u * 7 - Math.abs(v - 0.5) * 3.5) * Math.PI));
-    const vein = smooth(0.08, 0, side) * smooth(0.45, 0.1, Math.abs(v - 0.5));
-    const n = fbm(u, v, { scale: 4, octaves: 3, seed: 181 });
-    let c = mix(hex('#3E8E2E'), hex('#2A6B21'), smooth(-0.3, 0.6, n));
-    c = mix(c, hex('#7CBF55'), Math.max(mid, vein * 0.6));
+    const across = Math.abs(v - 0.5) * 2;
+    const mid = smooth(0.08, 0.03, across);
+    const side = Math.abs(Math.sin((u * 6 - across * 1.8) * Math.PI));
+    const vein = smooth(0.1, 0.02, side) * smooth(0.9, 0.3, across);
+    let c = mix(hex('#4DB840'), hex('#2F8A2E'), smooth(0.1, 1, across));
+    c = mix(c, hex('#9FE07A'), Math.max(mid, vein * 0.7));
     o.color = c;
-    o.height = 0.5 - Math.max(mid, vein) * 0.2 + n * 0.1;
-    o.rough = 0.32;
+    o.height = 0.5 - Math.max(mid, vein) * 0.1;
+    o.rough = 0.3;
   },
 };
 
 export const pepper = {
   width: 128,
-  normal: 0.6,
+  normal: 0.3,
   fn(u, v, o) {
-    const n = fbm(u, v, { scale: 3, scaleY: 1, octaves: 3, seed: 191 });
-    o.color = mix(hex('#D8301E'), hex('#B21E14'), smooth(-0.3, 0.5, n));
-    o.height = 0.5 + n * 0.1;
-    o.rough = 0.2;
+    const n = fbm(u, v, { scale: 2, scaleY: 1, octaves: 2, seed: 191 });
+    o.color = mix(hex('#F43B2B'), hex('#D6261C'), smooth(-0.5, 0.5, n));
+    o.height = 0.5;
+    o.rough = 0.15;
   },
 };
 
 export const ham = {
   width: 256,
-  normal: 1,
+  normal: 0.5,
   fn(u, v, o) {
-    const n = fbm(u, v, { scale: 4, octaves: 4, seed: 201 });
-    const marble = ridged(u, v, { scale: 3, octaves: 3, seed: 203 });
-    let c = mix(hex('#EE9E9B'), hex('#E2837F'), smooth(-0.3, 0.6, n));
-    c = mix(c, hex('#F8CFC8'), smooth(0.86, 0.97, marble) * 0.8);
+    const n = fbm(u, v, { scale: 3, octaves: 3, seed: 201 });
+    const marble = ridged(u, v, { scale: 2, octaves: 2, seed: 203 });
+    let c = mix(hex('#FBB0B0'), hex('#F09396'), smooth(-0.5, 0.6, n));
+    c = mix(c, hex('#FFDCDA'), smooth(0.88, 0.97, marble) * 0.8);
     o.color = c;
-    o.height = 0.5 + n * 0.1;
-    o.rough = 0.42;
+    o.height = 0.5 + n * 0.03;
+    o.rough = 0.38;
   },
 };

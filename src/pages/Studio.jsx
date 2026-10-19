@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useI18n } from '../i18n/index.jsx';
 import { href } from '../router.js';
 import Wordmark from '../brand/Wordmark.jsx';
+import ErrorBoundary from '../components/ErrorBoundary.jsx';
 import StudioStage from '../three/studio/StudioStage.jsx';
 import { models, defaultLayers } from '../three/products/index.js';
 import { TEXTURE_KEYS } from '../three/materials/index.js';
@@ -15,14 +16,15 @@ import './studio.css';
 // layers toggleable. Also the place the marketing renders will come from.
 
 const VIEWS = {
-  doener: { position: [0.4, 3.3, 4.6], target: [0, 0.55, 0.05] },
-  pizza: { position: [0, 3.4, 4.2], target: [0, 0.1, 0.1] },
+  doener: { position: [0.5, 3.6, 5.9], target: [0, 0.6, 0.05] },
+  pizza: { position: [0, 3.9, 4.9], target: [0, 0.1, 0.15] },
 };
 
 export default function Studio() {
   const { t } = useI18n();
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState(null);
   const [model, setModel] = useState(() => new URLSearchParams(location.hash.split('?')[1]).get('m') || 'doener');
   const [active, setActive] = useState(() => ({ doener: defaultLayers('doener'), pizza: defaultLayers('pizza') }));
   const [baked, setBaked] = useState(false);
@@ -30,10 +32,12 @@ export default function Studio() {
 
   useEffect(() => {
     const started = performance.now();
-    loadTextures(TEXTURE_KEYS, setProgress).then(() => {
-      console.info(`[studio] textures baked in ${Math.round(performance.now() - started)} ms`);
-      setReady(true);
-    });
+    loadTextures(TEXTURE_KEYS, setProgress)
+      .then(() => {
+        console.info(`[studio] textures baked in ${Math.round(performance.now() - started)} ms`);
+        setReady(true);
+      })
+      .catch(err => setError(err));
   }, []);
 
   const { Component, layers, bakeable } = models[model];
@@ -44,12 +48,13 @@ export default function Studio() {
   return (
     <div className="studio">
       <div className="studio__stage">
-        {ready && (
+        {ready && !error && (
+          <ErrorBoundary fallback={err => <p className="studio__error">{String(err?.message || err)}</p>}>
           <Canvas
             key={model}
             shadows="soft"
             dpr={[1, 2]}
-            gl={{ antialias: true, toneMapping: THREE.NeutralToneMapping, toneMappingExposure: 1.05, preserveDrawingBuffer: true }}
+            gl={{ antialias: true, toneMapping: THREE.NeutralToneMapping, toneMappingExposure: 0.88, preserveDrawingBuffer: true }}
             camera={{ fov: 30, position: view.position, near: 0.1, far: 50 }}
           >
             <StudioStage>
@@ -57,8 +62,10 @@ export default function Studio() {
             </StudioStage>
             <OrbitControls target={view.target} enablePan={false} minDistance={2.5} maxDistance={9} maxPolarAngle={Math.PI * 0.47} autoRotate={turntable} autoRotateSpeed={1.2} makeDefault />
           </Canvas>
+          </ErrorBoundary>
         )}
-        {!ready && (
+        {error && <p className="studio__error">{String(error?.message || error)}</p>}
+        {!ready && !error && (
           <div className="studio__loading">
             <Wordmark className="studio__loading-logo" />
             <div className="studio__bar">
