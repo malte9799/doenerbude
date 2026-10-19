@@ -3,6 +3,7 @@ import Pizza, { pizzaLayers } from './pizza/Pizza.jsx';
 import Duerum, { duerumLayers } from './doener-family/Duerum.jsx';
 import Box, { boxLayers } from './doener-family/Box.jsx';
 import Teller, { tellerLayers } from './doener-family/Teller.jsx';
+import Lahmacun, { lahmacunLayers } from './doener-family/Lahmacun.jsx';
 
 // Model registry – the contract every model fulfils (CONCEPT.md §6):
 //   {
@@ -21,6 +22,7 @@ export const models = {
   duerum: { id: 'duerum', kind: 'product', layers: duerumLayers, Component: Duerum, view: { position: [0.5, 4.2, 6.4], target: [0, 1.15, 0] } },
   box: { id: 'box', kind: 'product', layers: boxLayers, Component: Box, view: { position: [0.4, 4.0, 5.4], target: [0, 0.7, 0] } },
   teller: { id: 'teller', kind: 'product', layers: tellerLayers, Component: Teller, view: { position: [0, 5.6, 5.9], target: [0, 0.2, 0.1] } },
+  lahmacun: { id: 'lahmacun', kind: 'product', layers: lahmacunLayers, Component: Lahmacun, view: { position: [0.3, 4.4, 5.9], target: [-0.25, 0.4, 0.1] } },
 };
 
 export const defaultLayers = model => (models[model].layers ?? []).filter(l => l.default).map(l => l.id);
