@@ -1,11 +1,9 @@
-import { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { materials } from '../../materials/index.js';
-import { blobShape, deform, jitter, merge, planarUV, ribbon, rng, slab, splitByNormal } from '../../geo.js';
+import { blobShape, deform, jitter, merge, planarUV, ribbon, rng, slab, smoothNormals, splitByNormal } from '../../geo.js';
 import Layer from '../Layer.jsx';
-import { MOTION, approach } from '../../motion.js';
 
 // Döner im Fladenbrot, opened towards the viewer. Units: 1 = 10 cm.
 // Fluent style: few, big, plump pieces. Fillings stack on the bottom half in
@@ -13,6 +11,8 @@ import { MOTION, approach } from '../../motion.js';
 
 const L = 2.5; // bread length (x)
 const D = 1.4; // bread depth (z)
+const LID_ANGLE = 0.8; // fixed opening of the lid
+const FILL_SHIFT = 0.13; // fillings sit towards the front of the pocket
 const FILL = { x: 0.95, z: 0.45 }; // half extents of the filling area
 
 export const doenerLayers = [
@@ -24,7 +24,7 @@ export const doenerLayers = [
   { id: 'whiteCabbage', h: 0.07, default: true, price: 0 },
   { id: 'onion', h: 0.05, default: true, price: 0 },
   { id: 'feta', h: 0.1, default: false, price: 1.0 },
-  { id: 'garlicSauce', h: 0.04, default: true, price: 0 },
+  { id: 'garlicSauce', h: 0, default: true, price: 0 },
   { id: 'chili', h: 0.02, default: false, price: 0 },
 ];
 
@@ -116,26 +116,39 @@ const curls = (seed, count) =>
     return merge(geos);
   });
 
-const drizzle = () =>
-  memo('drizzle', () => {
-    const lines = [
-      { z: 0.1, amp: 0.14, freq: 3.4, ph: 0 },
-      { z: -0.14, amp: 0.1, freq: 4.2, ph: 1.7 },
-    ].map(({ z, amp, freq, ph }) => {
-      const r = rng(Math.round(ph * 10) + 5);
-      const pts = [];
-      let wobble = 1;
-      for (let i = 0; i <= 40; i++) {
-        const t = i / 40;
-        wobble += (r() - 0.5) * 0.25;
-        wobble = Math.min(1.4, Math.max(0.5, wobble));
-        pts.push(new THREE.Vector3((t * 2 - 1) * FILL.x * 0.8 + (r() - 0.5) * 0.03, 0.03 * Math.sin(t * 9 + ph) + r() * 0.015, z + amp * wobble * Math.sin(t * freq * Math.PI + ph)));
-      }
-      return ribbon(pts, { radius: 0.045, flat: 0.6, segments: 220, radial: 12 });
+// Height of the bread's cut face (crumb) in bread-local coordinates; mirrors
+// the deform in breadHalf so the sauce can follow the surface.
+const crumbY = (x, z) => {
+  const inside = Math.max(0, 1 - ((x + 0.15) / (L / 2)) ** 2 - ((z - 0.05) / (D / 2)) ** 2);
+  return -0.03 * inside + 0.015 * Math.sin(x * 3.1 + z * 2.2) + 0.02 * Math.sin(x * 1.1 + 0.4);
+};
+
+// Thin, lumpy spread of sauce that follows the crumb (bread-local space).
+const sauceSpread = seed =>
+  memo(`spread${seed}`, () => {
+    const g = slab(blobShape({ w: 1.95, h: 0.8, p: 2.6, wobble: 0.16, seed }), { thickness: 0.05, bevel: 0.022, bevelSegments: 4, tessellate: 0.07, uvScale: 0.6 });
+    return deform(g, v => {
+      const lump = 0.012 * Math.sin(v.x * 9 + seed) * Math.sin(v.z * 8 + seed * 2);
+      v.y += crumbY(v.x, v.z) + 0.026 + lump;
     });
-    const g = merge(lines);
+  });
+
+// A few soft dollops that peek out of the front edge.
+const sauceDollops = () =>
+  memo('dollops', () => {
+    const geos = [
+      [-0.4, 0.6, 0.12],
+      [0.3, 0.62, 0.15],
+      [0.72, 0.56, 0.09],
+    ].map(([x, z, r]) => {
+      const g = new THREE.IcosahedronGeometry(r, 3);
+      g.scale(1.5, 0.28, 1);
+      g.translate(x, crumbY(x, 0.5) + 0.03, z);
+      return g;
+    });
+    const g = merge(geos);
     planarUV(g, 0.8);
-    return g;
+    return smoothNormals(g);
   });
 
 const fetaCube = () => memo('feta', () => new RoundedBoxGeometry(0.2, 0.17, 0.2, 4, 0.06));
@@ -218,36 +231,43 @@ export default function Doener({ active }) {
   const bread = breadHalf();
   const breadMats = useMemo(() => [materials.breadCrust(), materials.breadCrumb()], []);
 
-  // Resting height of every layer = bread surface + all active layers below.
+  // Resting height of every layer: the fillings are stuffed into the pocket,
+  // so they only stack part of their thickness (pieces tuck into each other).
   const base = 0.5;
-  let y = base;
+  let y = base + 0.03;
   const ys = {};
   for (const l of doenerLayers) {
     ys[l.id] = y;
-    if (on(l.id)) y += l.h;
+    if (on(l.id)) y += l.h * 0.5;
   }
-  const pile = y - base;
 
-  const lid = useRef();
-  const lidState = useRef({ y: base, a: 0.4 });
-  useFrame((_, dt) => {
-    const s = lidState.current;
-    s.y = approach(s.y, base + pile * 0.5, MOTION.rates.lid, dt);
-    s.a = approach(s.a, 0.3 + pile * 0.4, MOTION.rates.lid, dt);
-    lid.current.position.y = s.y;
-    lid.current.rotation.x = -s.a;
-  });
+  const sauce = on('garlicSauce');
+  const spread = sauceSpread(61);
+  const spreadLid = sauceSpread(67);
+  const sauceMat = materials.garlicSauce();
 
   return (
     <group>
       {/* bottom half, cut face up */}
-      <mesh geometry={bread} material={breadMats} position={[0, base, 0]} castShadow receiveShadow />
-
-      {/* lid, hinged at the back edge */}
-      <group ref={lid} position={[0.03, base, -D / 2 + 0.08]}>
-        <mesh geometry={bread} material={breadMats} rotation={[Math.PI, 0.05, 0.035]} position={[0, 0.01, D / 2 - 0.08]} castShadow receiveShadow />
+      <group position={[0, base, 0]}>
+        <mesh geometry={bread} material={breadMats} castShadow receiveShadow />
+        <group visible={sauce}>
+          <mesh geometry={spread} material={sauceMat} receiveShadow />
+          <mesh geometry={sauceDollops()} material={sauceMat} castShadow />
+        </group>
       </group>
 
+      {/* lid, hinged at the back edge, resting at a fixed angle */}
+      <group position={[0.03, base + 0.02, -D / 2 + 0.08]} rotation={[-LID_ANGLE, 0, 0]}>
+        <group rotation={[Math.PI, 0.05, 0.035]} position={[0, 0.01, D / 2 - 0.08]}>
+          <mesh geometry={bread} material={breadMats} castShadow receiveShadow />
+          <group visible={sauce}>
+            <mesh geometry={spreadLid} material={sauceMat} receiveShadow />
+          </group>
+        </group>
+      </group>
+
+      <group position={[0, 0, FILL_SHIFT]}>
       <Layer active={on('meatVeal')} y={ys.meatVeal}>
         <Pieces layout={meatLayout} geometry={it => meatPiece(it.seed)} material={materials.doenerMeat()} />
       </Layer>
@@ -272,12 +292,10 @@ export default function Doener({ active }) {
       <Layer active={on('feta')} y={ys.feta}>
         <Pieces layout={fetaLayout} geometry={fetaCube} material={materials.feta()} />
       </Layer>
-      <Layer active={on('garlicSauce')} y={ys.garlicSauce}>
-        <mesh geometry={drizzle()} material={materials.garlicSauce()} castShadow />
-      </Layer>
       <Layer active={on('chili')} y={ys.chili}>
         <ChiliFlakes />
       </Layer>
+      </group>
     </group>
   );
 }
