@@ -9,7 +9,8 @@ export function useDescribeOptions() {
     const v = t(key);
     return typeof v === 'string' && v !== key ? v : null;
   };
-  const labelOf = (id, ns) => known(ns, id) ?? known('ingredients', id) ?? known('products', `${id}.name`) ?? String(id);
+  const labelOf = (id, ns) =>
+    known(ns, id) ?? known('shop.sizes', id) ?? known('shop.extras', id) ?? known('ingredients', id) ?? known('products', `${id}.name`) ?? String(id);
   const valueText = (key, v) => {
     if (Array.isArray(v)) return v.map(x => labelOf(x, key === 'size' ? 'cart.sizes' : 'ingredients')).join(', ');
     if (typeof v === 'boolean') return t(v ? 'cart.options.yes' : 'cart.options.no');

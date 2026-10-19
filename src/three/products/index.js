@@ -1,3 +1,4 @@
+import { createElement } from 'react';
 import Doener, { doenerLayers } from './doener/Doener.jsx';
 import Pizza, { pizzaLayers } from './pizza/Pizza.jsx';
 import PizzaBox from './pizza/PizzaBox.jsx';
@@ -47,5 +48,12 @@ export const models = {
   teller: { id: 'teller', kind: 'product', layers: tellerLayers, Component: Teller, view: { position: [0, 5.6, 5.9], target: [0, 0.2, 0.1] } },
   lahmacun: { id: 'lahmacun', kind: 'product', layers: lahmacunLayers, Component: Lahmacun, view: { position: [0.3, 4.4, 5.9], target: [-0.25, 0.4, 0.1] } },
 };
+
+// Dip variants as their own entries, so shop thumbnails and menu items can
+// point at a specific sauce without extra props.
+for (const variant of ['garlic', 'herb', 'hot', 'cocktail']) {
+  const id = `dip${variant[0].toUpperCase()}${variant.slice(1)}`;
+  models[id] = { ...models.dip, id, Component: props => createElement(models.dip.Component, { ...props, variant }) };
+}
 
 export const defaultLayers = model => (models[model].layers ?? []).filter(l => l.default).map(l => l.id);

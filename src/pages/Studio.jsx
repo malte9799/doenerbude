@@ -87,6 +87,9 @@ export default function Studio() {
           </a>
           <h1>{t('studio.title')}</h1>
           <p>{t('studio.subtitle')}</p>
+          <p className="studio__links">
+            <a href={href('/bestellen')}>{t('nav.order')} →</a> · <a href={href('/info')}>{t('nav.info')} →</a>
+          </p>
         </header>
 
         <section>

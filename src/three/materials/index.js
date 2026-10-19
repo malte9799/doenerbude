@@ -156,6 +156,10 @@ export const materials = {
   redCabbage: () => once('redCabbage', () => textured('redCabbage', { rim: '#e9a0da', rimStrength: 0.45, ...wet, clearcoat: 0.5 })),
   whiteCabbage: () => once('whiteCabbage', () => textured('whiteCabbage', { rim: '#faffe0', rimStrength: 0.4, ...wet, clearcoat: 0.5 })),
   feta: () => once('feta', () => textured('feta', { rim: '#ffffff', rimStrength: 0.3 })),
+  // Same sauce for downward-facing surfaces (lid underside): a soft self-glow
+  // keeps it creamy instead of grey under the top-lit gradient.
+  garlicSauceLid: () =>
+    once('garlicSauceLid', () => textured('garlicSauce', { rim: '#ffffff', rimStrength: 0.3, clearcoat: 1, clearcoatRoughness: 0.08, emissive: new THREE.Color('#f6eedf'), emissiveIntensity: 0.45 })),
   garlicSauce: () => once('garlicSauce', () => textured('garlicSauce', { rim: '#ffffff', rimStrength: 0.3, clearcoat: 1, clearcoatRoughness: 0.08 })),
   chili: () => once('chili', () => plain('#e0331f', '#ff8a66', wet)),
 

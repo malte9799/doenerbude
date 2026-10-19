@@ -265,7 +265,7 @@ export default function Doener({ active }) {
         <group rotation={[Math.PI, 0.05, 0.035]} position={[0, 0.01, D / 2 - 0.08]}>
           <mesh geometry={bread} material={breadMats} castShadow receiveShadow />
           <group visible={sauce}>
-            <mesh geometry={spreadLid} material={sauceMat} receiveShadow />
+            <mesh geometry={spreadLid} material={materials.garlicSauceLid()} receiveShadow />
           </group>
         </group>
       </group>

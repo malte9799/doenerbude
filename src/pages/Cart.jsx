@@ -5,12 +5,17 @@ import { href } from '../router.js';
 import { OptionList, useLineName } from '../components/checkout/lines.jsx';
 import { DeliveryHints, Empty, Icon, Totals } from '../components/checkout/parts.jsx';
 import '../components/checkout/checkout.css';
+import { useDelivery } from '../components/shop/useDelivery.js';
 
 export default function Cart() {
   const { t, price } = useI18n();
   const cart = useCart();
   const lineName = useLineName();
-  const { lines, count, subtotal, deliveryFee, total, missingForMin } = cart;
+  const { mode } = useDelivery();
+  const pickup = mode === 'pickup';
+  const { lines, count, subtotal, missingForMin } = cart;
+  const deliveryFee = pickup ? 0 : cart.deliveryFee;
+  const total = subtotal + deliveryFee;
 
   if (!lines.length) {
     return (
@@ -22,7 +27,7 @@ export default function Cart() {
     );
   }
 
-  const blocked = missingForMin > 0;
+  const blocked = !pickup && missingForMin > 0;
 
   return (
     <Layout>

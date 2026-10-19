@@ -9,6 +9,7 @@ import { Empty, Icon, Totals } from '../components/checkout/parts.jsx';
 import { hhmm, timeSlots } from '../components/checkout/slots.js';
 import '../components/checkout/checkout.css';
 import '../components/checkout/form.css';
+import { useDelivery } from '../components/shop/useDelivery.js';
 
 const emptyForm = { name: '', street: '', zip: '', city: '', phone: '', note: '' };
 
@@ -66,7 +67,8 @@ export default function Checkout() {
   const { etaMinutes } = brand.delivery;
   const eta = t('checkout.minutes', { from: etaMinutes[0], to: etaMinutes[1] });
 
-  const [mode, setMode] = useState('delivery');
+  // Shared with the shop header's Lieferung/Abholung toggle.
+  const { mode, setMode } = useDelivery();
   const [form, setForm] = useState(emptyForm);
   const [timeMode, setTimeMode] = useState('asap');
   const [slot, setSlot] = useState('');
