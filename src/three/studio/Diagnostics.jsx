@@ -6,7 +6,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 
 const errors = [];
 if (typeof window !== 'undefined') {
-  const push = msg => errors.push(String(msg).slice(0, 160));
+  const push = msg => errors.push(String(msg).slice(0, 300));
   window.addEventListener('error', e => push(e.message || e.error));
   window.addEventListener('unhandledrejection', e => push(e.reason?.message || e.reason));
   const original = console.error;
@@ -16,6 +16,18 @@ if (typeof window !== 'undefined') {
   };
 }
 export const diagnosticErrors = errors;
+
+// Replaces three's console dump with the compiler's own error lines.
+export function installShaderDiagnostics(gl) {
+  gl.debug.onShaderError = (ctx, program, vs, fs) => {
+    const lines = [ctx.getShaderInfoLog(vs), ctx.getShaderInfoLog(fs), ctx.getProgramInfoLog(program)]
+      .join('\n')
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => /error/i.test(l));
+    errors.push(`SHADER ${lines.slice(0, 3).join(' / ') || 'link failed'}`.slice(0, 400));
+  };
+}
 
 export function Diagnostics({ target }) {
   const { gl, size, scene } = useThree();

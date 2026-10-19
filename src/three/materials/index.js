@@ -61,15 +61,22 @@ function triplanar(material, scale) {
   return addPatch(material, 'triplanar', shader => {
     shader.uniforms.uTriScale = { value: scale };
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uTriScale;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTriPos = position * uTriScale;\nvTriN = objectNormal;');
+      .replace('#include <common>', '#include <common>\nuniform float uTriScale;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\nvarying vec3 vTriX;\nvarying vec3 vTriY;\nvarying vec3 vTriZ;')
+      .replace(
+        '#include <begin_vertex>',
+        // Object → view basis for the normal, passed down so the fragment
+        // shader never has to redeclare normalMatrix (some compilers refuse).
+        '#include <begin_vertex>\nvTriPos = position * uTriScale;\nvTriN = objectNormal;\nvTriX = normalMatrix * vec3(1.0, 0.0, 0.0);\nvTriY = normalMatrix * vec3(0.0, 1.0, 0.0);\nvTriZ = normalMatrix * vec3(0.0, 0.0, 1.0);',
+      );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
         `#include <common>
 varying vec3 vTriPos;
 varying vec3 vTriN;
-uniform mat3 normalMatrix;
+varying vec3 vTriX;
+varying vec3 vTriY;
+varying vec3 vTriZ;
 vec3 triW() { vec3 w = pow(abs(normalize(vTriN)), vec3(6.0)); return w / (w.x + w.y + w.z); }
 vec4 triSample(sampler2D t) {
   vec3 w = triW();
@@ -90,7 +97,8 @@ vec4 triSample(sampler2D t) {
   vec3 nx = vec3(tx.xy + n0.zy, n0.x).zyx;
   vec3 ny = vec3(ty.xy + n0.xz, n0.y).xzy;
   vec3 nz = vec3(tz.xy + n0.xy, n0.z);
-  normal = normalize(normalMatrix * normalize(nx * w.x + ny * w.y + nz * w.z));
+  vec3 objN = normalize(nx * w.x + ny * w.y + nz * w.z);
+  normal = normalize(objN.x * vTriX + objN.y * vTriY + objN.z * vTriZ);
 }`,
       );
   });

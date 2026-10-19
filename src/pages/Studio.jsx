@@ -7,7 +7,7 @@ import { href } from '../router.js';
 import Wordmark from '../brand/Wordmark.jsx';
 import ErrorBoundary from '../components/ErrorBoundary.jsx';
 import StudioStage from '../three/studio/StudioStage.jsx';
-import { Diagnostics, diagnosticErrors } from '../three/studio/Diagnostics.jsx';
+import { Diagnostics, diagnosticErrors, installShaderDiagnostics } from '../three/studio/Diagnostics.jsx';
 import { models, defaultLayers } from '../three/products/index.js';
 import { TEXTURE_KEYS } from '../three/materials/index.js';
 import { loadTextures } from '../three/tex/textures.js';
@@ -61,6 +61,7 @@ export default function Studio() {
             dpr={[1, 2]}
             gl={{ antialias: true, toneMapping: THREE.NeutralToneMapping, toneMappingExposure: 0.88, preserveDrawingBuffer: true }}
             camera={{ fov: 30, position: view.position, near: 0.1, far: 50 }}
+            onCreated={({ gl }) => installShaderDiagnostics(gl)}
           >
             <StudioStage>
               <Component active={active[model]} baked={baked} />
