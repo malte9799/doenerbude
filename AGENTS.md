@@ -10,6 +10,7 @@ Lies zuerst `CONCEPT.md` (Konzept und Stil-Bibel) und diese Datei. Dann die vorh
 - **Materialien** kommen aus der gemeinsamen Bibliothek. Eigene Materialien baust du mit den Helfern aus `src/three/materials/index.js` (`textured`, `plain`, `once`, `wet`, `triplanar`). Jedes Material bekommt einen passenden `rim` (Farbe des Randschimmers).
 - **Maßstab:** 1 Einheit = 10 cm. Ursprung Mitte unten, +Y oben, Vorderseite +Z.
 - **Keine Animationen.** Alles, was sich ändert, läuft über `approach()` aus `src/three/motion.js`. Der Schalter ist aus, später schalten wir dort Animationen ein.
+  Ausnahme: Die Kamera der Landing folgt direkt dem Scrollen, und die Maus darf die Kamera leicht drehen. Das ist Bedienung, keine Animation. Auch das läuft über `approach()`, damit später eine Glättung möglich ist.
 
 ## Dateien
 
@@ -22,6 +23,7 @@ Arbeite nur in den Dateien deines Pakets (siehe Auftrag). Gemeinsame Dateien än
 | Texte | `src/i18n/de/<paket>.js` | in `src/i18n/de/index.js` importieren und in `parts` aufnehmen. Wird tief gemerged, du darfst also `products`/`ingredients` erweitern |
 | Modelle/Szenen | `src/three/<bereich>/<paket>/…` | je eine Zeile im `models`-Objekt in `src/three/products/index.js` (mit `kind`, `view`) |
 | Seiten | die Stub-Datei in `src/pages/` | Routen stehen schon in `src/App.jsx` |
+| Produkt auswählen | `src/state/selection.js` | `openProduct(id)` öffnet das globale `<ProductPanel>` (in App eingebunden). Zum Testen: `window.__openProduct('doener')` |
 
 Alles Markenspezifische (Name, Farben, Adresse, Liefergebühren) liest du aus `src/brand/brand.js`. Nichts davon hart codieren. Alle sichtbaren Texte laufen über i18n (`useI18n().t`).
 
