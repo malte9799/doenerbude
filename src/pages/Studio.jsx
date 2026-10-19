@@ -55,7 +55,7 @@ export default function Studio() {
             shadows="soft"
             dpr={[1, 2]}
             gl={{ antialias: true, toneMapping: THREE.NeutralToneMapping, toneMappingExposure: 0.88, preserveDrawingBuffer: true }}
-            camera={{ fov: 30, position: view.position, near: 0.1, far: 50 }}
+            camera={{ fov: 30, position: view.position, near: 0.5, far: 600 }}
             onCreated={({ gl }) => installShaderDiagnostics(gl)}
           >
             <StudioStage>
