@@ -9,6 +9,7 @@ import Boerek from './sides/Boerek.jsx';
 import Baklava from './sides/Baklava.jsx';
 import Dip from './sides/Dip.jsx';
 import { Ayran, Cola, Wasser, Limo } from './sides/Drinks.jsx';
+import Interior from '../store/interior/Interior.jsx';
 
 // Model registry – the contract every model fulfils (CONCEPT.md §6):
 //   {
@@ -36,6 +37,7 @@ export const models = {
   cola: { id: 'cola', kind: 'product', Component: Cola, view: { position: [0, 2.4, 4.8], target: [0, 0.6, 0] } },
   wasser: { id: 'wasser', kind: 'product', Component: Wasser, view: { position: [0, 3.2, 6.4], target: [0, 1.3, 0] } },
   limo: { id: 'limo', kind: 'product', Component: Limo, view: { position: [0, 3.2, 6.4], target: [0, 1.3, 0] } },
+  storeInterior: { id: 'storeInterior', kind: 'scene', Component: Interior, view: { position: [8, 16, 48], target: [0, 9, -24] } },
 };
 
 export const defaultLayers = model => (models[model].layers ?? []).filter(l => l.default).map(l => l.id);

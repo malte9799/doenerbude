@@ -441,3 +441,4 @@ export const ham = {
 export * from './recipes/pizza-extras.js';
 export * from './recipes/store-exterior.js';
 export * from './recipes/sides.js';
+export * from './recipes/store-interior.js';
