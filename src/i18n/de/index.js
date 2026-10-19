@@ -5,11 +5,12 @@ import pizzaExtras from './pizza-extras.js';
 import storeExterior from './store-exterior.js';
 import sides from './sides.js';
 import storeInterior from './store-interior.js';
+import doenerFamily from './doener-family.js';
 
 // German strings, split per work package. Each package adds one file here
 // and one entry to `parts`; parts are deep-merged, so a package may extend
 // shared namespaces such as `products` or `ingredients`.
-const parts = [core, checkout, shop, pizzaExtras, storeExterior, sides, storeInterior];
+const parts = [core, checkout, shop, pizzaExtras, storeExterior, sides, storeInterior, doenerFamily];
 
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
 const merge = (a, b) => {
