@@ -77,11 +77,14 @@ function Clock({ x, y, z }) {
   );
 }
 
+const FLOOR_LIFT = 0.05;
+
 export default function Shell() {
   return (
     <group>
-      {/* floor + slab */}
-      <mesh geometry={wallPlane(W, D, 1 / 4)} material={M.floor()} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -D / 2]} />
+      {/* floor + slab. The floor sits 5 mm above y = 0: the exterior sidewalk
+          runs under the shop with its top at exactly 0 and would z-fight. */}
+      <mesh geometry={wallPlane(W, D, 1 / 4)} material={M.floor()} rotation={[-Math.PI / 2, 0, 0]} position={[0, FLOOR_LIFT, -D / 2]} />
       <BoxAt x={[-W / 2 - 1.6, W / 2 + 1.6]} y={[-1.4, -0.02]} z={[-D - 1.6, 0]} r={0.3} m={M.plaster()} />
 
       {/* walls */}

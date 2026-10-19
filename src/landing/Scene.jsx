@@ -4,7 +4,7 @@ import { Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
 import Exterior from '../three/store/exterior/Exterior.jsx';
 import Interior from '../three/store/interior/Interior.jsx';
-import { approach } from '../three/motion.js';
+import { MOTION, follow } from '../three/motion.js';
 import { Products, Tray } from './Products.jsx';
 import { doorOpenAt, fridgeOpenAt, sampleRail, stationAt } from './rail.js';
 
@@ -31,8 +31,8 @@ const clamp01 = x => Math.min(1, Math.max(0, x));
 const smooth = x => x * x * (3 - 2 * x);
 
 // Moves the camera along the rail. `state.progress` is the scroll position
-// (0..1), `state.mouse` the pointer in -1..1. Everything is damped through
-// approach() so that motion.js remains the single switch.
+// (0..1), `state.mouse` the pointer in -1..1. Both are smoothed through
+// follow() from motion.js, which stays the single place to tune it.
 function CameraRig({ state, onStation }) {
   const camera = useThree(s => s.camera);
   const tmp = useRef({
@@ -47,9 +47,10 @@ function CameraRig({ state, onStation }) {
   }).current;
 
   useFrame((_, dt) => {
-    tmp.p = approach(tmp.p, state.progress, 12, dt);
-    tmp.mx = approach(tmp.mx, state.mouse.x, 6, dt);
-    tmp.my = approach(tmp.my, state.mouse.y, 6, dt);
+    // Scroll and pointer are followed with light smoothing (motion.js follow()).
+    tmp.p = follow(tmp.p, state.progress, MOTION.rates.scroll, dt);
+    tmp.mx = follow(tmp.mx, state.mouse.x, MOTION.rates.pointer, dt);
+    tmp.my = follow(tmp.my, state.mouse.y, MOTION.rates.pointer, dt);
     const s = stationAt(tmp.p);
     state.station = s;
     const fov = sampleRail(s, tmp.pos, tmp.tgt);
@@ -97,8 +98,8 @@ export default function Scene({ state, lines, ui }) {
   const set = useRef((door, fridge) => setOpen({ door, fridge })).current;
   const camera = useThree(s => s.camera);
   useEffect(() => {
-    camera.far = 1200;
-    camera.near = 0.3;
+    camera.far = 600;
+    camera.near = 0.8;
     camera.updateProjectionMatrix();
   }, [camera]);
 

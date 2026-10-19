@@ -104,7 +104,7 @@ export default function Landing() {
           <Canvas
             dpr={[1, 1.75]}
             gl={{ antialias: true, alpha: true, toneMapping: THREE.NeutralToneMapping, toneMappingExposure: 0.9 }}
-            camera={{ fov: 34, near: 0.3, far: 1200, position: [-40, 21, 80] }}
+            camera={{ fov: 34, near: 0.8, far: 600, position: [-40, 21, 80] }}
             onCreated={({ gl }) => installShaderDiagnostics(gl)}
           >
             <Scene state={state} lines={lines} ui={ui} />
