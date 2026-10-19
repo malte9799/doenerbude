@@ -1,5 +1,7 @@
 # DönerBude
 
+Live: https://malte9799.github.io/doenerbude/
+
 Konzept-Shop für einen Döner- und Pizzaladen: 3D-Landing (Scroll-Reise durch den Laden), Express-Shop im Lieferando-Stil und ein Baukasten für Döner und Pizza. Das Konzept steht in [CONCEPT.md](CONCEPT.md).
 
 ## Stand
@@ -13,6 +15,7 @@ npm install
 npm run build                  # dist/
 npx vite build --mode single   # dist-single/index.html – alles in einer Datei, öffnet ohne Server
 node scripts/artifact.mjs      # macht daraus die Seite fürs claude.ai-Artifact
+npm run deploy                 # baut und veröffentlicht auf GitHub Pages (Branch gh-pages)
 ```
 
 ## Aufbau
