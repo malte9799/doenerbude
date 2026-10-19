@@ -1,5 +1,6 @@
 import Doener, { doenerLayers } from './doener/Doener.jsx';
 import Pizza, { pizzaLayers } from './pizza/Pizza.jsx';
+import Interior from '../store/interior/Interior.jsx';
 
 // Model registry – the contract every model fulfils (CONCEPT.md §6):
 //   {
@@ -15,6 +16,7 @@ import Pizza, { pizzaLayers } from './pizza/Pizza.jsx';
 export const models = {
   doener: { id: 'doener', kind: 'product', layers: doenerLayers, Component: Doener, view: { position: [0.5, 3.6, 5.9], target: [0, 0.6, 0.05] } },
   pizza: { id: 'pizza', kind: 'product', layers: pizzaLayers, Component: Pizza, bakeable: true, view: { position: [0, 3.9, 4.9], target: [0, 0.1, 0.15] } },
+  storeInterior: { id: 'storeInterior', kind: 'scene', Component: Interior, view: { position: [8, 16, 48], target: [0, 9, -24] } },
 };
 
 export const defaultLayers = model => (models[model].layers ?? []).filter(l => l.default).map(l => l.id);
