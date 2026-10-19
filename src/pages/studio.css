@@ -139,3 +139,14 @@
   font-family: ui-monospace, monospace;
   font-size: 0.85rem;
 }
+
+.studio__diag {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+  right: 12px;
+  margin: 0;
+  font: 11px/1.4 ui-monospace, monospace;
+  color: var(--c-muted);
+  pointer-events: none;
+}
