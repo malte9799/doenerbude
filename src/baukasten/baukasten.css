@@ -1,0 +1,392 @@
+/* Baukasten. Colours and fonts only via --c-* / --f-* tokens. */
+
+.bk {
+  --bk-h: calc(100vh - var(--header-h, 68px));
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(380px, 2fr);
+  height: var(--bk-h);
+  min-height: 560px;
+}
+
+.bk__stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--c-mustard) 26%, var(--c-paper)), transparent 68%),
+    color-mix(in srgb, var(--c-mustard) 10%, var(--c-paper));
+}
+
+.bk__stage canvas {
+  display: block;
+  cursor: grab;
+}
+
+.bk__stage canvas:active {
+  cursor: grabbing;
+}
+
+.bk__loading {
+  position: absolute;
+  inset: 0;
+}
+
+.bk__loading .loader {
+  min-height: 100%;
+  height: 100%;
+  background: none;
+}
+
+.bk__error {
+  position: absolute;
+  inset: auto 24px 24px;
+  margin: 0;
+  color: var(--c-red);
+}
+
+.bk__hint {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c-paper) 82%, transparent);
+  color: var(--c-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.bk__side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--c-paper);
+  border-left: 1px solid var(--c-line);
+}
+
+.bk__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 32px 12px;
+}
+
+.bk__back {
+  display: inline-block;
+  margin-bottom: 14px;
+  color: var(--c-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bk__back:hover {
+  color: var(--c-red);
+}
+
+.bk__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 20px;
+  background: color-mix(in srgb, var(--c-ink) 6%, var(--c-paper));
+  border-radius: 14px;
+}
+
+.bk__tabs a {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: 10px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--c-muted);
+  font-family: var(--f-display);
+  font-weight: 700;
+  transition: background 0.12s, color 0.12s;
+}
+
+.bk__tabs a:hover {
+  color: var(--c-ink);
+}
+
+.bk__tabs a.is-on {
+  background: #fff;
+  color: var(--c-ink);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--c-ink) 16%, transparent);
+}
+
+.bk__title {
+  margin: 0 0 4px;
+  font-family: var(--f-display);
+  font-size: 2.1rem;
+  line-height: 1.1;
+}
+
+.bk__desc {
+  margin: 0 0 4px;
+  color: var(--c-muted);
+  line-height: 1.5;
+}
+
+.bk__base {
+  margin: 0 0 18px;
+  font-weight: 700;
+}
+
+.bk__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.bk__head h2 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 1.15rem;
+}
+
+.bk__reset {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--c-red);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bk__reset:disabled {
+  color: var(--c-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.bk__group {
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.bk__group legend {
+  padding: 0;
+  margin-bottom: 8px;
+  color: var(--c-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bk__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bk__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px 0 10px;
+  background: #fff;
+  border: 1.5px solid var(--c-line);
+  border-radius: 999px;
+  color: var(--c-ink);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.94rem;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.bk__chip:hover {
+  border-color: color-mix(in srgb, var(--c-red) 45%, var(--c-line));
+}
+
+.bk__chip.is-on {
+  border-color: var(--c-red);
+  background: color-mix(in srgb, var(--c-red) 7%, #fff);
+}
+
+.bk__chip small {
+  color: var(--c-muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.bk__check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--c-ink) 26%, transparent);
+  color: #fff;
+}
+
+.bk__chip.is-on .bk__check {
+  background: var(--c-red);
+  border-color: var(--c-red);
+}
+
+.bk__chip:focus-visible,
+.bk__reset:focus-visible,
+.bk__qty button:focus-visible,
+.bk__tabs a:focus-visible,
+.bk__back:focus-visible,
+.bk__bake:has(input:focus-visible) {
+  outline: 3px solid color-mix(in srgb, var(--c-red) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.bk__bake {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bk__bake input {
+  position: absolute;
+  opacity: 0;
+}
+
+.bk__switch {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c-ink) 18%, var(--c-paper));
+  transition: background 0.15s;
+}
+
+.bk__switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--c-ink) 30%, transparent);
+  transition: transform 0.15s;
+}
+
+.bk__bake.is-on .bk__switch {
+  background: var(--c-red);
+}
+
+.bk__bake.is-on .bk__switch::after {
+  transform: translateX(18px);
+}
+
+.bk__buy {
+  padding: 14px 32px 20px;
+  border-top: 1px solid var(--c-line);
+  background: var(--c-paper);
+}
+
+.bk__summary {
+  margin: 0 0 10px;
+  min-height: 1.4em;
+  color: var(--c-muted);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.bk__row {
+  display: flex;
+  gap: 12px;
+}
+
+.bk__qty {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--c-line);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.bk__qty button {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 48px;
+  border: 0;
+  background: none;
+  color: var(--c-ink);
+  cursor: pointer;
+  border-radius: 14px;
+}
+
+.bk__qty button:disabled {
+  color: var(--c-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.bk__qty output {
+  min-width: 26px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.bk__add {
+  flex: 1;
+}
+
+.bk__done p {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+
+.bk__done-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--c-herb);
+  color: #fff;
+}
+
+.bk__done-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.bk__done-actions .shop-btn {
+  flex: 1;
+  padding: 0 12px;
+}
+
+@media (max-width: 1100px) {
+  .bk {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr);
+  }
+  .bk__scroll,
+  .bk__buy {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+}
+
+/* Full-bleed inside the shared layout shell. */
+.layout__main:has(> .bk) {
+  max-width: none;
+  padding: 0;
+}
