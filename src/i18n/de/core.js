@@ -1,5 +1,5 @@
-// German strings. Add a sibling file (en.js, tr.js …) with the same keys to
-// add a language.
+// Core German strings: shell, menu, ingredients. Packages add their own
+// files next to this one (see index.js). A new language gets its own folder.
 
 export default {
   nav: {
@@ -15,6 +15,7 @@ export default {
     total: 'Gesamt',
     comingSoon: 'Kommt bald',
   },
+  scenes: {},
   studio: {
     title: 'Studio',
     subtitle: 'Qualitätstest der 3D-Modelle',

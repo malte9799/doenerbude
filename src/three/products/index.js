@@ -1,14 +1,20 @@
 import Doener, { doenerLayers } from './doener/Doener.jsx';
 import Pizza, { pizzaLayers } from './pizza/Pizza.jsx';
 
-// Product registry – the contract every model fulfils (CONCEPT.md §6):
-//   { id, layers: [{ id, default, price }], Component({ active, ...props }) }
-// Layer labels come from i18n `ingredients.<id>`. A model can later be swapped
-// for a GLB-based component with the same props without touching shop code.
+// Model registry – the contract every model fulfils (CONCEPT.md §6):
+//   {
+//     id, kind: 'product' | 'scene',
+//     layers: [{ id, default, price }]   (optional; labels from i18n `ingredients.<id>`)
+//     Component({ active, ...props }),
+//     view: { position, target },        (studio camera)
+//     bakeable?: true,
+//   }
+// A model can later be swapped for a GLB-based component with the same props
+// without touching shop code. Packages add their entries below, one line each.
 
 export const models = {
-  doener: { id: 'doener', layers: doenerLayers, Component: Doener },
-  pizza: { id: 'pizza', layers: pizzaLayers, Component: Pizza, bakeable: true },
+  doener: { id: 'doener', kind: 'product', layers: doenerLayers, Component: Doener, view: { position: [0.5, 3.6, 5.9], target: [0, 0.6, 0.05] } },
+  pizza: { id: 'pizza', kind: 'product', layers: pizzaLayers, Component: Pizza, bakeable: true, view: { position: [0, 3.9, 4.9], target: [0, 0.1, 0.15] } },
 };
 
-export const defaultLayers = model => models[model].layers.filter(l => l.default).map(l => l.id);
+export const defaultLayers = model => (models[model].layers ?? []).filter(l => l.default).map(l => l.id);

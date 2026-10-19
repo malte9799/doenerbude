@@ -16,18 +16,13 @@ import './studio.css';
 // Internal review page: every model in the shared studio light, with its
 // layers toggleable. Also the place the marketing renders will come from.
 
-const VIEWS = {
-  doener: { position: [0.5, 3.6, 5.9], target: [0, 0.6, 0.05] },
-  pizza: { position: [0, 3.9, 4.9], target: [0, 0.1, 0.15] },
-};
-
 export default function Studio() {
   const { t } = useI18n();
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(null);
   const [model, setModel] = useState(() => new URLSearchParams(location.hash.split('?')[1]).get('m') || 'doener');
-  const [active, setActive] = useState(() => ({ doener: defaultLayers('doener'), pizza: defaultLayers('pizza') }));
+  const [active, setActive] = useState(() => Object.fromEntries(Object.keys(models).map(id => [id, defaultLayers(id)])));
   const [baked, setBaked] = useState(false);
   const [turntable, setTurntable] = useState(false);
   const diag = useRef();
@@ -45,10 +40,10 @@ export default function Studio() {
       });
   }, []);
 
-  const { Component, layers, bakeable } = models[model];
+  const { Component, layers = [], bakeable } = models[model] ?? models.doener;
   const toggle = id =>
     setActive(a => ({ ...a, [model]: a[model].includes(id) ? a[model].filter(x => x !== id) : [...a[model], id] }));
-  const view = VIEWS[model];
+  const view = models[model]?.view ?? { position: [0, 3, 6], target: [0, 0.5, 0] };
 
   return (
     <div className="studio">
@@ -67,7 +62,7 @@ export default function Studio() {
               <Component active={active[model]} baked={baked} />
             </StudioStage>
             <Diagnostics target={diag} />
-            <OrbitControls target={view.target} enablePan={false} minDistance={2.5} maxDistance={9} maxPolarAngle={Math.PI * 0.47} autoRotate={turntable} autoRotateSpeed={1.2} makeDefault />
+            <OrbitControls target={view.target} enablePan={false} minDistance={1} maxDistance={200} maxPolarAngle={Math.PI * 0.47} autoRotate={turntable} autoRotateSpeed={1.2} makeDefault />
           </Canvas>
           </ErrorBoundary>
         )}
@@ -99,12 +94,13 @@ export default function Studio() {
           <div className="seg">
             {Object.keys(models).map(id => (
               <button key={id} className={id === model ? 'is-on' : ''} onClick={() => setModel(id)}>
-                {t(`products.${id}.name`)}
+                {t(models[id].kind === 'scene' ? `scenes.${id}` : `products.${id}.name`)}
               </button>
             ))}
           </div>
         </section>
 
+        {layers.length > 0 && (
         <section>
           <h2>{t('studio.ingredients')}</h2>
           <div className="chips">
@@ -115,6 +111,7 @@ export default function Studio() {
             ))}
           </div>
         </section>
+        )}
 
         <section className="studio__toggles">
           {bakeable && (

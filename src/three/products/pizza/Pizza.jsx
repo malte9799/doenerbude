@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { materials } from '../../materials/index.js';
 import { blobShape, deform, jitter, planarUV, ribbon, rng, slab } from '../../geo.js';
 import Layer from '../Layer.jsx';
+import { MOTION, approach } from '../../motion.js';
 
 // Pizza, Ø 30 cm (3 units). Base → sauce → cheese → toppings in fixed slots.
 // Fluent style: a puffy rim and few, big, plump toppings.
@@ -206,7 +207,7 @@ export default function Pizza({ active, baked = false }) {
   const bake = useRef(baked ? 1 : 0);
 
   useFrame((_, dt) => {
-    bake.current = THREE.MathUtils.damp(bake.current, baked ? 1 : 0, 1.6, dt);
+    bake.current = approach(bake.current, baked ? 1 : 0, MOTION.rates.bake, dt);
     baseMat.userData.bake.value = bake.current;
     cheeseMat.userData.bake.value = bake.current;
     baseRef.current.scale.set(1 + bake.current * 0.01, 1 + bake.current * 0.1, 1 + bake.current * 0.01);

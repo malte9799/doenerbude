@@ -4,11 +4,13 @@ import { tex } from '../tex/textures.js';
 
 // The shared material library. Models never create materials of their own –
 // they ask for one here, so every product shares one look (style bible §6).
+// Packages add their own materials in materials/<package>.js using the
+// exported helpers below (textured, plain, once, wet, triplanar, bakeBlend).
 
 export const TEXTURE_KEYS = Object.keys(recipes);
 
 const cache = new Map();
-const once = (key, make) => {
+export const once = (key, make) => {
   if (!cache.has(key)) cache.set(key, make());
   return cache.get(key);
 };
@@ -16,7 +18,7 @@ const once = (key, make) => {
 // ─────────────────────────── shader patches ──────────────────────────────
 // Several patches can stack on one material (fluent + triplanar + bake).
 
-function addPatch(material, key, fn) {
+export function addPatch(material, key, fn) {
   const patches = (material.userData.patches ??= []);
   patches.push({ key, fn });
   material.onBeforeCompile = shader => patches.forEach(p => p.fn(shader));
@@ -29,7 +31,7 @@ function addPatch(material, key, fn) {
 // as plump and a little translucent.
 const TOP = new THREE.Color(1.07, 1.06, 1.04);
 const BOTTOM = new THREE.Color(0.84, 0.78, 0.76);
-function fluent(material, { rim = '#ffffff', rimStrength = 0.3, rimPower = 3 } = {}) {
+export function fluent(material, { rim = '#ffffff', rimStrength = 0.3, rimPower = 3 } = {}) {
   const uniforms = {
     uRim: { value: new THREE.Color(rim).multiplyScalar(rimStrength * 0.55) },
     uRimPow: { value: rimPower },
@@ -57,7 +59,7 @@ function fluent(material, { rim = '#ffffff', rimStrength = 0.3, rimPower = 3 } =
 // Triplanar projection for organic shapes without clean UVs (bread): colour,
 // roughness and normals are projected along the three object axes and
 // blended by the surface normal, so nothing smears on curved sides.
-function triplanar(material, scale) {
+export function triplanar(material, scale) {
   return addPatch(material, 'triplanar', shader => {
     shader.uniforms.uTriScale = { value: scale };
     shader.vertexShader = shader.vertexShader
@@ -105,7 +107,7 @@ vec4 triSample(sampler2D t) {
 }
 
 // Crossfades the colour map from `raw` to `baked` via material.userData.bake.value (0..1).
-function bakeBlend(material, bakedKey) {
+export function bakeBlend(material, bakedKey) {
   const uniforms = { uBake: { value: 0 }, uBakedMap: { value: tex(bakedKey).map } };
   material.userData.bake = uniforms.uBake;
   return addPatch(material, 'bake', shader => {
@@ -119,7 +121,7 @@ function bakeBlend(material, bakedKey) {
 // ───────────────────────────── factories ─────────────────────────────────
 
 // Textured PBR + soft sheen + the fluent patch.
-function textured(key, { normalScale = 1, rim, rimStrength, ...opts } = {}) {
+export function textured(key, { normalScale = 1, rim, rimStrength, ...opts } = {}) {
   const t = tex(key);
   const material = new THREE.MeshPhysicalMaterial({
     map: t.map,
@@ -135,10 +137,10 @@ function textured(key, { normalScale = 1, rim, rimStrength, ...opts } = {}) {
   return fluent(material, { rim, rimStrength });
 }
 
-const plain = (color, rim, opts = {}) =>
+export const plain = (color, rim, opts = {}) =>
   fluent(new THREE.MeshPhysicalMaterial({ color, roughness: 0.45, sheen: 0.4, sheenColor: new THREE.Color(rim), ...opts }), { rim });
 
-const wet = { clearcoat: 0.8, clearcoatRoughness: 0.12 };
+export const wet = { clearcoat: 0.8, clearcoatRoughness: 0.12 };
 
 export const materials = {
   // Bread

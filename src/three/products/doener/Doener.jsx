@@ -5,6 +5,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { materials } from '../../materials/index.js';
 import { blobShape, deform, jitter, merge, planarUV, ribbon, rng, slab, splitByNormal } from '../../geo.js';
 import Layer from '../Layer.jsx';
+import { MOTION, approach } from '../../motion.js';
 
 // Döner im Fladenbrot, opened towards the viewer. Units: 1 = 10 cm.
 // Fluent style: few, big, plump pieces. Fillings stack on the bottom half in
@@ -231,8 +232,8 @@ export default function Doener({ active }) {
   const lidState = useRef({ y: base, a: 0.4 });
   useFrame((_, dt) => {
     const s = lidState.current;
-    s.y = THREE.MathUtils.damp(s.y, base + pile * 0.5, 5, dt);
-    s.a = THREE.MathUtils.damp(s.a, 0.3 + pile * 0.4, 5, dt);
+    s.y = approach(s.y, base + pile * 0.5, MOTION.rates.lid, dt);
+    s.a = approach(s.a, 0.3 + pile * 0.4, MOTION.rates.lid, dt);
     lid.current.position.y = s.y;
     lid.current.rotation.x = -s.a;
   });

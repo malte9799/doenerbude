@@ -75,13 +75,15 @@
 
 .seg {
   display: flex;
+  flex-wrap: wrap;
   background: var(--c-paper);
-  border-radius: 999px;
+  border-radius: 22px;
   padding: 4px;
 }
 
 .seg button {
-  flex: 1;
+  flex: 1 0 auto;
+  padding-inline: 14px;
   border: 0;
   background: none;
   padding: 9px 0;

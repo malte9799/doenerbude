@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import de from './de.js';
+import de from './de/index.js';
 import { brand } from '../brand/brand.js';
 
 const dictionaries = { de };

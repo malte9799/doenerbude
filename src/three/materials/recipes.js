@@ -434,3 +434,7 @@ export const ham = {
     o.rough = 0.38;
   },
 };
+
+// ─────────────────────────── package recipes ─────────────────────────────
+// Each work package keeps its recipes in recipes/<package>.js and adds one
+// re-export line here. Keys must be unique across all packages.
