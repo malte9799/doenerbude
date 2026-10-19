@@ -92,15 +92,15 @@ const onionRing = seed =>
   });
 
 // Cabbage as thick, soft curls (a few dozen), merged into one mesh per layer.
-const curls = (seed, count) =>
-  memo(`curls${seed}`, () => {
+const curls = (seed, count, sx = FILL.x * 1.8, sz = FILL.z * 1.5) =>
+  memo(`curls${seed}-${sx}-${sz}`, () => {
     const r = rng(seed);
     const geos = [];
     const cols = Math.ceil(Math.sqrt(count * 2.2));
     const rows = Math.ceil(count / cols);
     for (let i = 0; i < count; i++) {
-      const x = ((i % cols) / (cols - 1) - 0.5) * FILL.x * 1.8 + (r() - 0.5) * 0.12;
-      const z = (Math.floor(i / cols) / Math.max(1, rows - 1) - 0.5) * FILL.z * 1.5 + (r() - 0.5) * 0.1;
+      const x = ((i % cols) / (cols - 1) - 0.5) * sx + (r() - 0.5) * 0.12;
+      const z = (Math.floor(i / cols) / Math.max(1, rows - 1) - 0.5) * sz + (r() - 0.5) * 0.1;
       const a = r() * Math.PI;
       const len = 0.3 + r() * 0.15;
       const bend = 0.5 + r() * 0.4;
@@ -159,6 +159,9 @@ const flake = () =>
     g.scale(1.3, 0.45, 1);
     return g;
   });
+
+// Shared with the döner family (Dürüm, box, plate, lahmacun).
+export { meatPiece, lettuceLeaf, halfMoon, roundSlice, onionRing, fetaCube, flake, curls, memo };
 
 // ─────────────────────────────── layouts ─────────────────────────────────
 // Fixed, tidy arrangements (no randomness at runtime).
