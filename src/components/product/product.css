@@ -1,0 +1,139 @@
+/* Product drawer. Colours and fonts only via --c-* / --f-* tokens. Reuses the
+   express shop's option styles (.pdlg__*, .qty, .shop-btn). */
+
+.ppanel {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--c-ink) 28%, transparent);
+}
+
+.ppanel__drawer {
+  position: relative;
+  width: min(480px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-paper);
+  color: var(--c-ink);
+  box-shadow: -18px 0 60px rgba(0, 0, 0, 0.28);
+}
+
+.ppanel__close {
+  top: 16px;
+  right: 16px;
+}
+
+.ppanel__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ppanel__media {
+  padding: 16px;
+  background: color-mix(in srgb, var(--c-mustard) 14%, var(--c-paper));
+}
+
+.ppanel__media .thumb {
+  aspect-ratio: 16 / 10;
+  border-radius: 22px;
+}
+
+.ppanel__canvas {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--c-mustard) 22%, #fff) 0%, color-mix(in srgb, var(--c-mustard) 10%, var(--c-paper)) 72%);
+}
+
+.ppanel__canvas canvas {
+  cursor: grab;
+  touch-action: none;
+}
+
+.ppanel__canvas canvas:active {
+  cursor: grabbing;
+}
+
+.ppanel__hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c-paper) 80%, transparent);
+  color: var(--c-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.ppanel__preview-msg {
+  margin: 0;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--c-muted);
+}
+
+.ppanel__body {
+  padding: 22px 24px 8px;
+}
+
+.ppanel__body .pdlg__title {
+  margin-right: 0;
+}
+
+.ppanel__extras {
+  grid-template-columns: 1fr;
+}
+
+.ppanel__foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--c-line);
+  background: var(--c-paper);
+}
+
+.ppanel__foot--added {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.ppanel__added {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ppanel__added strong {
+  font-family: var(--f-display);
+  font-size: 1.15rem;
+  color: color-mix(in srgb, var(--c-herb) 70%, var(--c-ink));
+}
+
+.ppanel__added span {
+  font-size: 0.88rem;
+  color: var(--c-muted);
+}
+
+.ppanel__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ppanel button:focus-visible,
+.ppanel a:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--c-red) 55%, transparent);
+  outline-offset: 2px;
+}
