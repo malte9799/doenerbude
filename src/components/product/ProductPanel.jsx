@@ -22,6 +22,19 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 export default function ProductPanel() {
   const id = useSelectedProduct();
   const product = id ? products.find(p => p.id === id) : null;
+
+  // Freeze the page while the drawer is open – on the landing, scrolling would
+  // otherwise keep moving the camera behind it.
+  useEffect(() => {
+    if (!product) return;
+    const html = document.documentElement;
+    const prev = html.style.overflow;
+    html.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = prev;
+    };
+  }, [product]);
+
   if (!product) return null;
   return <Drawer key={product.id} product={product} />;
 }

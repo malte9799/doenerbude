@@ -98,7 +98,9 @@ export default function Overlay({ state, count }) {
           <section key={station.id} className={`landing__card ${active === i && near ? 'is-on' : ''}`} aria-hidden={active !== i}>
             <p className="landing__eyebrow">{t(`landing.stations.${station.id}.eyebrow`)}</p>
             <h2>{t(`landing.stations.${station.id}.title`)}</h2>
-            <p>{t(`landing.stations.${station.id}.text`)}</p>
+            <p>
+              {station.id === 'checkout' && !count ? t('landing.emptyTray') : t(`landing.stations.${station.id}.text`)}
+            </p>
             {station.id === 'checkout' && (
               <div className="landing__cta">
                 <a className="landing__order" href={href('/kasse')}>
