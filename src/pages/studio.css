@@ -1,0 +1,130 @@
+.studio {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  height: 100vh;
+  background: radial-gradient(120% 90% at 40% 30%, #fffaf2 0%, #f6ecdd 55%, #eadbc4 100%);
+}
+
+.studio__stage {
+  position: relative;
+  min-width: 0;
+}
+
+.studio__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 1.2rem;
+}
+
+.studio__loading-logo {
+  font-size: 3rem;
+}
+
+.studio__bar {
+  width: 220px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--c-line);
+  overflow: hidden;
+}
+
+.studio__bar span {
+  display: block;
+  height: 100%;
+  background: var(--c-red);
+  transform-origin: left;
+  transition: transform 0.2s;
+}
+
+.studio__panel {
+  background: #fff;
+  border-left: 1px solid var(--c-line);
+  padding: 28px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.studio__home {
+  text-decoration: none;
+  font-size: 1.1rem;
+}
+
+.studio__panel h1 {
+  font-family: var(--f-display);
+  font-size: 1.8rem;
+  margin: 10px 0 2px;
+}
+
+.studio__panel header p {
+  margin: 0;
+  color: var(--c-muted);
+}
+
+.studio__panel h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--c-muted);
+  margin: 0 0 10px;
+}
+
+.seg {
+  display: flex;
+  background: var(--c-paper);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.seg button {
+  flex: 1;
+  border: 0;
+  background: none;
+  padding: 9px 0;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seg button.is-on {
+  background: var(--c-ink);
+  color: var(--c-paper);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  border: 1.5px solid var(--c-line);
+  background: #fff;
+  padding: 7px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.chip.is-on {
+  border-color: var(--c-red);
+  background: #fdeceb;
+  color: var(--c-red);
+}
+
+.studio__toggles {
+  display: grid;
+  gap: 10px;
+}
+
+.studio__toggles label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
