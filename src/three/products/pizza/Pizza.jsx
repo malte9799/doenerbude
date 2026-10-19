@@ -5,6 +5,8 @@ import { materials } from '../../materials/index.js';
 import { blobShape, deform, jitter, planarUV, ribbon, rng, slab } from '../../geo.js';
 import Layer from '../Layer.jsx';
 import { MOTION, approach } from '../../motion.js';
+import { pizzaExtras } from '../../materials/pizza-extras.js';
+import { Corn, chickenGeo, extraSlots, jalapenoGeo, lifts, onionGeo, rucolaGeo, tunaGeo } from './toppings.jsx';
 
 // Pizza, Ø 30 cm (3 units). Base → sauce → cheese → toppings in fixed slots.
 // Fluent style: a puffy rim and few, big, plump toppings.
@@ -21,7 +23,13 @@ export const pizzaLayers = [
   { id: 'mushrooms', default: false, price: 1.0 },
   { id: 'pepper', default: false, price: 1.0 },
   { id: 'olives', default: false, price: 1.0 },
+  { id: 'chicken', default: false, price: 2.0 },
+  { id: 'tuna', default: false, price: 1.5 },
+  { id: 'redOnion', default: false, price: 0.8 },
+  { id: 'corn', default: false, price: 0.8 },
+  { id: 'jalapenos', default: false, price: 1.0 },
   { id: 'basil', default: false, price: 0.5 },
+  { id: 'rucola', default: false, price: 1.0 }, // goes on after baking, always on top
 ];
 
 const cache = {};
@@ -178,7 +186,7 @@ const ring = (n, r, offset = 0, extra = {}) =>
   });
 
 // Rings give a readable base layout; jitter makes it look placed by hand.
-const loose = { pos: 0.09, rot: Math.PI, tilt: 0.07, scale: 0.12 };
+const loose = { pos: 0.09, y: 0.006, rot: Math.PI, tilt: 0.07, scale: 0.12 };
 const slots = {
   salami: jitter([...ring(6, 0.8, 0.3), { p: [0.05, 0, -0.04], r: [0, 0.4, 0] }], 1, loose),
   ham: jitter(ring(4, 0.48, Math.PI / 4), 2, loose).map((s, i) => ({ ...s, seed: 1 + i })),
@@ -215,8 +223,9 @@ export default function Pizza({ active, baked = false }) {
 
   const sauceTop = TOP + (on('tomatoSauce') ? 0.05 : 0);
   const top = sauceTop + (on('cheese') ? 0.07 : 0);
-  // Toppings lie at slightly increasing heights so overlaps never z-fight.
-  const ty = id => top + 0.03 + Object.keys(slots).indexOf(id) * 0.008;
+  // Every topping rests at its own height (see `lifts`) plus a little per-piece
+  // jitter, so overlaps stack in a fixed order and never z-fight.
+  const ty = id => top + lifts[id];
 
   return (
     <group>
@@ -239,14 +248,32 @@ export default function Pizza({ active, baked = false }) {
       <Layer active={on('mushrooms')} y={ty('mushrooms')}>
         <Pieces items={slots.mushrooms} geometry={mushroom} material={mushroomMats} />
       </Layer>
-      <Layer active={on('pepper')} y={ty('pepper') + 0.02}>
+      <Layer active={on('chicken')} y={ty('chicken')}>
+        <Pieces items={extraSlots.chicken} geometry={it => chickenGeo(it.v)} material={pizzaExtras.chicken()} />
+      </Layer>
+      <Layer active={on('tuna')} y={ty('tuna')}>
+        <Pieces items={extraSlots.tuna} geometry={it => tunaGeo(it.v)} material={pizzaExtras.tuna()} />
+      </Layer>
+      <Layer active={on('corn')} y={ty('corn')}>
+        <Corn />
+      </Layer>
+      <Layer active={on('jalapenos')} y={ty('jalapenos')}>
+        <Pieces items={extraSlots.jalapenos} geometry={it => jalapenoGeo(it.v)} material={pizzaExtras.jalapeno()} />
+      </Layer>
+      <Layer active={on('pepper')} y={ty('pepper')}>
         <Pieces items={slots.pepper} geometry={it => pepperStrip(it.seed)} material={materials.pepper()} />
       </Layer>
-      <Layer active={on('olives')} y={ty('olives') + 0.03}>
+      <Layer active={on('redOnion')} y={ty('redOnion')}>
+        <Pieces items={extraSlots.redOnion} geometry={it => onionGeo(it.v)} material={pizzaExtras.redOnion()} />
+      </Layer>
+      <Layer active={on('olives')} y={ty('olives')}>
         <Pieces items={slots.olives} geometry={olive} material={materials.olive()} />
       </Layer>
-      <Layer active={on('basil')} y={ty('basil') + 0.04}>
+      <Layer active={on('basil')} y={ty('basil')}>
         <Pieces items={slots.basil} geometry={basilLeaf} material={materials.basil()} />
+      </Layer>
+      <Layer active={on('rucola')} y={ty('rucola')}>
+        <Pieces items={extraSlots.rucola} geometry={it => rucolaGeo(it.v)} material={pizzaExtras.rucola()} />
       </Layer>
     </group>
   );
