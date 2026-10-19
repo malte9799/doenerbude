@@ -12,6 +12,7 @@ Phase 0 und Qualitätstest: Gerüst, Marke, i18n, Speisekarte, Warenkorb, prozed
 npm install
 npm run build                  # dist/
 npx vite build --mode single   # dist-single/index.html – alles in einer Datei, öffnet ohne Server
+node scripts/artifact.mjs      # macht daraus die Seite fürs claude.ai-Artifact
 ```
 
 ## Aufbau
