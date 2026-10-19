@@ -440,3 +440,4 @@ export const ham = {
 // re-export line here. Keys must be unique across all packages.
 export * from './recipes/pizza-extras.js';
 export * from './recipes/store-exterior.js';
+export * from './recipes/sides.js';
